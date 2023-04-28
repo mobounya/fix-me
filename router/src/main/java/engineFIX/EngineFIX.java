@@ -1,45 +1,90 @@
 package engineFIX;
 
 import java.io.DataInputStream;
+import java.text.StringCharacterIterator;
 import java.util.ArrayList;
 
 public class EngineFIX {
     // Tag 8: FIX protocol version.
-    public String  beginString;
+    private String  beginString;
 
     // Tag 9: Number of bytes in message body.
-    public int     bodyLength;
+    private int     bodyLength;
 
     // Tag 35: Identifies FIX message type.
-    public String  MsgType;
+    private String  msgType;
 
     // Tag 38: Order quantity for sale and buy.
-    public int     orderQty;
+    private int     orderQty;
 
     // Tag 44: Price per single unit.
-    public int     price;
+    private int     price;
 
     // Tag 50: we will use this for the 6 digits ID.
-    public String   SenderSubID;
+    private String   senderSubID;
 
     // Tag 10: FIX Message Checksum.
-    public String     checkSum;
+    private int      checkSum;
+    private int         asciiSum;
 
-    public boolean complete;
+    private boolean complete;
 
-    public int bytesRead;
+    private int bytesRead;
 
     public EngineFIX()
     {
-        this.complete = false;
-        this.bytesRead = 0;
+        this.asciiSum = -1;
     }
 
     public EngineFIX(DataInputStream in)
     {
-        this.complete = false;
-        this.bytesRead = 0;
+        this.asciiSum = -1;
         consume(in);
+    }
+
+    public String getBeginString() {
+        return beginString;
+    }
+
+    public int getBodyLength() {
+        return bodyLength;
+    }
+
+    public String getMsgType() {
+        return msgType;
+    }
+
+    public int getOrderQty() {
+        return orderQty;
+    }
+
+    public int getPrice() {
+        return price;
+    }
+
+    public String getSenderSubID() {
+        return senderSubID;
+    }
+
+    public int getCheckSum() {
+        return checkSum;
+    }
+
+    public boolean isComplete() {
+        return complete;
+    }
+
+    public int getBytesRead() {
+        return bytesRead;
+    }
+
+    // Note: this method does not calculate the 0x1 (SOH) character.
+    public static int calculateCheckSum(String str)
+    {
+        int sum = 0;
+        char[] array = str.toCharArray();
+        for (char c : array) sum += c;
+        return sum;
     }
 
     private void parseTag(String tag)
@@ -49,7 +94,7 @@ public class EngineFIX {
         {
             if (ar[0].compareTo("10") == 0)
             {
-                this.checkSum = ar[1];
+                this.checkSum = Integer.parseInt(ar[1]);
                 this.complete = true;
             }
             else if (ar[0].compareTo("8") == 0)
@@ -64,7 +109,7 @@ public class EngineFIX {
             {
                 // 2 bytes for the "=" and 0x1 (SOH) characters.
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
-                this.MsgType = ar[1];
+                this.msgType = ar[1];
             }
             else if (ar[0].compareTo("38") == 0)
             {
@@ -82,7 +127,16 @@ public class EngineFIX {
             {
                 // 2 bytes for the "=" and 0x1 (SOH) characters.
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
-                this.SenderSubID = ar[1];
+                this.senderSubID = ar[1];
+            }
+
+            // calculate Sum.
+            if (ar[0].compareTo("10") != 0)
+            {
+                if (this.asciiSum == -1)
+                    this.asciiSum = 0;
+                this.asciiSum += EngineFIX.calculateCheckSum(ar[0] + "=" + ar[1]);
+                this.asciiSum += 0x1;
             }
         } else
             System.out.println("Waa hya ach wa9e3");
@@ -118,6 +172,11 @@ public class EngineFIX {
                     continue ;
                 }
                 bytes.add(byteRead);
+            }
+            if (this.complete)
+            {
+                assert (bytesRead == bodyLength) : "Number of bytes read: " + bytesRead + " does not match message body length: " + bodyLength;
+                assert ((asciiSum % 256) == checkSum) : "CheckSums don't match";
             }
         } catch (Exception e)
         {
