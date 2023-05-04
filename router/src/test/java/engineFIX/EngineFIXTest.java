@@ -7,64 +7,60 @@ import java.io.*;
 import static org.junit.Assert.*;
 
 public class EngineFIXTest {
-    private void writeString(EngineFIX parser, String str) throws IOException {
-        File file = new File("test.txt");
-        // Write to file.
-        FileOutputStream fout = new FileOutputStream(file);
-        DataOutputStream dout = new DataOutputStream(fout);
+    private void writeString(EngineFIX parser, String str) {
+        Byte[] bytes = new Byte[str.length() + 1];
 
-        dout.writeUTF(str);
-        dout.writeByte(0x1);
-
-        FileInputStream fin = new FileInputStream(file);
-        DataInputStream din = new DataInputStream(fin);
-        parser.consume(din);
+        int i = 0;
+        for (; i < str.length(); i++)
+            bytes[i] = (byte) str.charAt(i);
+        bytes[i] = 0x1;
+        parser.consume(bytes);
     }
 
     @Test
-    public void testProtocolVersion() throws IOException {
+    public void testProtocolVersion() {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "8=FIX 4.2");
         assertEquals("FIX 4.2", parser.getBeginString());
     }
 
     @Test
-    public void testBodyLength() throws IOException {
+    public void testBodyLength() {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "9=77");
         assertEquals(77, parser.getBodyLength());
     }
 
     @Test
-    public void testMsgType() throws IOException {
+    public void testMsgType() {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "35=ThisTheMessageType");
         assertEquals("ThisTheMessageType", parser.getMsgType());
     }
 
     @Test
-    public void testOrderQty() throws IOException {
+    public void testOrderQty() {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "38=455");
         assertEquals(455, parser.getOrderQty());
     }
 
     @Test
-    public void testPrice() throws IOException {
+    public void testPrice() {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "44=485");
         assertEquals(485, parser.getPrice());
     }
 
     @Test
-    public void testSenderSubID() throws IOException {
+    public void testSenderSubID() {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "50=BblablaTestID");
         assertEquals("BblablaTestID", parser.getSenderSubID());
     }
 
     @Test
-    public void testWholeMessage1() throws IOException {
+    public void testWholeMessage1() {
         int expectedBytesRead = 0;
         int checksum = 0;
 

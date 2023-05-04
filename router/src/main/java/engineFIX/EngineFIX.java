@@ -1,10 +1,11 @@
 package engineFIX;
 
-import java.io.DataInputStream;
-import java.text.StringCharacterIterator;
 import java.util.ArrayList;
 
 public class EngineFIX {
+    // This is where we store the raw data of the message.
+    private ArrayList<Byte> rawData;
+
     // Tag 8: FIX protocol version.
     private String  beginString;
 
@@ -20,12 +21,18 @@ public class EngineFIX {
     // Tag 44: Price per single unit.
     private int     price;
 
+    // Tag 49: Identifies entity sending the message.
+    private String  SenderCompID;
+
     // Tag 50: we will use this for the 6 digits ID.
     private String   senderSubID;
 
+    // Tag 56: Identifies entity receiving the message.
+    private String   targetCompID;
+
     // Tag 10: FIX Message Checksum.
     private int      checkSum;
-    private int         asciiSum;
+    private int      asciiSum;
 
     private boolean complete;
 
@@ -33,13 +40,13 @@ public class EngineFIX {
 
     public EngineFIX()
     {
+        this.complete = false;
         this.asciiSum = -1;
+        this.rawData = new ArrayList<>();
     }
 
-    public EngineFIX(DataInputStream in)
-    {
-        this.asciiSum = -1;
-        consume(in);
+    public ArrayList<Byte> getRawData() {
+        return rawData;
     }
 
     public String getBeginString() {
@@ -78,6 +85,18 @@ public class EngineFIX {
         return bytesRead;
     }
 
+    public String getTargetCompID() {
+        return targetCompID;
+    }
+
+    public String getSenderCompID() {
+        return SenderCompID;
+    }
+
+    public int getAsciiSum() {
+        return asciiSum;
+    }
+
     // Note: this method does not calculate the 0x1 (SOH) character.
     public static int calculateCheckSum(String str)
     {
@@ -85,6 +104,18 @@ public class EngineFIX {
         char[] array = str.toCharArray();
         for (char c : array) sum += c;
         return sum;
+    }
+
+    public static byte[] toPrimitiveArray(ArrayList<Byte> bytes)
+    {
+        byte[] byteArray = new byte[bytes.size()];
+        int i = 0;
+        for (Byte mbyte : bytes)
+        {
+            byteArray[i] = mbyte.byteValue();
+            i++;
+        }
+        return byteArray;
     }
 
     private void parseTag(String tag)
@@ -123,11 +154,22 @@ public class EngineFIX {
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
                 this.price = Integer.parseInt(ar[1]);
             }
+            else if (ar[0].compareTo("49") == 0)
+            {
+                // 2 bytes for the "=" and 0x1 (SOH) characters.
+                this.bytesRead += ar[0].length() + ar[1].length() + 2;
+                this.SenderCompID = ar[1];
+            }
             else if (ar[0].compareTo("50") == 0)
             {
                 // 2 bytes for the "=" and 0x1 (SOH) characters.
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
                 this.senderSubID = ar[1];
+            }
+            else if (ar[0].compareTo("56") == 0)
+            {
+                this.bytesRead += ar[0].length() + ar[1].length() + 2;
+                this.targetCompID = ar[1];
             }
 
             // calculate Sum.
@@ -142,45 +184,27 @@ public class EngineFIX {
             System.out.println("Waa hya ach wa9e3");
     }
 
-    private byte[] toPrimitiveArray(ArrayList<Byte> bytes)
-    {
-        byte[] byteArray = new byte[bytes.size()];
-        int i = 0;
-        for (Byte mbyte : bytes)
-        {
-            byteArray[i] = mbyte.byteValue();
-            i++;
-        }
-        return byteArray;
-    }
-
-    public  boolean consume(DataInputStream in) {
+    public  boolean consume(Byte[] data) {
         ArrayList<Byte> bytes = new ArrayList<>();
 
         try {
-            in.skip(2);
-            while (in.available() > 0)
+            for (Byte mbyte : data)
             {
-                byte byteRead = in.readByte();
+                rawData.add(mbyte);
                 // 0x1 is the SOH character.
-                if (Byte.toUnsignedInt(byteRead) == 0x1)
+                if (mbyte == 0x1 || mbyte == '\n')
                 {
-                    in.skip(2);
                     byte[] byteArray = toPrimitiveArray(bytes);
                     parseTag(new String(byteArray));
                     bytes.clear();
                     continue ;
                 }
-                bytes.add(byteRead);
+                bytes.add(mbyte);
             }
-            if (this.complete)
-            {
-                assert (bytesRead == bodyLength) : "Number of bytes read: " + bytesRead + " does not match message body length: " + bodyLength;
-                assert ((asciiSum % 256) == checkSum) : "CheckSums don't match";
-            }
-        } catch (Exception e)
+        }
+        catch (Exception e)
         {
-            System.out.println(e.getMessage());
+            System.out.println("Exception: " + e.getMessage());
         }
         return true;
     }
