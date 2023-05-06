@@ -12,6 +12,9 @@ public class EngineFIX {
     // Tag 9: Number of bytes in message body.
     private int     bodyLength;
 
+    // Tag 10: FIX Message Checksum.
+    private int      checkSum;
+
     // Tag 35: Identifies FIX message type.
     private String  msgType;
 
@@ -28,18 +31,14 @@ public class EngineFIX {
     private String   senderSubID;
 
     // Tag 54: Side of order. (1 = Buy, 2 = Sell)
-    // TODO: parse this from the message.
     private String side;
 
     // Tag 55: This tag contains the Group Code for the instrument.
-    // TODO: parse this from the message.
     private String symbol;
 
     // Tag 56: Identifies entity receiving the message.
     private String   targetCompID;
 
-    // Tag 10: FIX Message Checksum.
-    private int      checkSum;
     private int      asciiSum;
 
     private boolean complete;
@@ -103,6 +102,14 @@ public class EngineFIX {
 
     public int getAsciiSum() {
         return asciiSum;
+    }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public String getSide() {
+        return side;
     }
 
     // Note: this method does not calculate the 0x1 (SOH) character.
@@ -173,6 +180,19 @@ public class EngineFIX {
                 // 2 bytes for the "=" and 0x1 (SOH) characters.
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
                 this.senderSubID = ar[1];
+            }
+            else if (ar[0].compareTo("54") == 0)
+            {
+                this.bytesRead += ar[0].length() + ar[1].length() + 2;
+                if (ar[1].compareTo("1") == 0)
+                    this.side = "buy";
+                else if (ar[1].compareTo("2") == 0)
+                    this.side = "sell";
+            }
+            else if (ar[0].compareTo("55") == 0)
+            {
+                this.bytesRead += ar[0].length() + ar[1].length() + 2;
+                this.symbol = ar[1];
             }
             else if (ar[0].compareTo("56") == 0)
             {
