@@ -45,10 +45,12 @@ public class EngineFIX {
 
     private int bytesRead;
 
+    private String lastParsedTag;
+
     public EngineFIX()
     {
         this.complete = false;
-        this.asciiSum = -1;
+        this.asciiSum = 0;
         this.rawData = new ArrayList<>();
     }
 
@@ -101,7 +103,7 @@ public class EngineFIX {
     }
 
     public int getAsciiSum() {
-        return asciiSum;
+        return asciiSum % 256;
     }
 
     public String getSymbol() {
@@ -133,11 +135,11 @@ public class EngineFIX {
         return byteArray;
     }
 
-    private void parseTag(String tag)
-    {
+    private void parseTag(String tag) throws UnsupportedTagException, TagFormatException {
         String[] ar = tag.split("=");
         if (ar.length == 2)
         {
+            lastParsedTag = ar[0] + "=" + ar[1];
             if (ar[0].compareTo("10") == 0)
             {
                 this.checkSum = Integer.parseInt(ar[1]);
@@ -199,6 +201,8 @@ public class EngineFIX {
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
                 this.targetCompID = ar[1];
             }
+            else
+                throw new UnsupportedTagException(lastParsedTag);
 
             // calculate Sum.
             if (ar[0].compareTo("10") != 0)
@@ -209,10 +213,13 @@ public class EngineFIX {
                 this.asciiSum += 0x1;
             }
         } else
-            System.out.println("Waa hya ach wa9e3");
+        {
+            lastParsedTag = ar[0];
+            throw new TagFormatException(lastParsedTag);
+        }
     }
 
-    public  boolean consume(Byte[] data) {
+    public void consume(Byte[] data) throws UnsupportedTagException, TagFormatException, BadTagValueException {
         ArrayList<Byte> bytes = new ArrayList<>();
 
         try {
@@ -229,11 +236,17 @@ public class EngineFIX {
                 }
                 bytes.add(mbyte);
             }
-        }
-        catch (Exception e)
+        } catch (NumberFormatException e)
         {
-            System.out.println("Exception: " + e.getMessage());
+            throw new TagFormatException(lastParsedTag);
         }
-        return true;
+
+        if (isComplete())
+        {
+            if (bytesRead != getBodyLength())
+                throw new BadTagValueException("9=" + getBodyLength());
+            if (checkSum != getAsciiSum())
+                throw new BadTagValueException("10=" + getCheckSum());
+        }
     }
 }

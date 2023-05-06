@@ -64,14 +64,20 @@ public abstract class Client implements Comparable<Client> {
 
     public void read(byte[] data, int size)
     {
-        Byte[] bytes = new Byte[size];
+        try {
+            Byte[] bytes = new Byte[size];
 
-        int i = 0;
-        for (; i < size; i++)
-            bytes[i] = data[i];
-        parser.consume(bytes);
-        if (this.name == null && parser.getSenderCompID() != null)
-            this.name = parser.getSenderCompID();
+            int i = 0;
+            for (; i < size; i++)
+                bytes[i] = data[i];
+            parser.consume(bytes);
+            if (this.name == null && parser.getSenderCompID() != null)
+                this.name = parser.getSenderCompID();
+        } catch (Exception e)
+        {
+            // TODO: handle this.
+            System.out.println(e.getMessage());
+        }
     }
 
     public boolean messageComplete()

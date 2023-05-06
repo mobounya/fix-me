@@ -5,7 +5,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class EngineFIXTest {
-    private void writeString(EngineFIX parser, String str) {
+    private void writeString(EngineFIX parser, String str) throws UnsupportedTagException, TagFormatException, BadTagValueException {
         Byte[] bytes = new Byte[str.length() + 1];
 
         int i = 0;
@@ -16,7 +16,98 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testProtocolVersion() {
+    public void testIncorrectFormatTag1() throws UnsupportedTagException, TagFormatException, BadTagValueException {
+        EngineFIX parser = new EngineFIX();
+
+        writeString(parser, "8=FIX 4.2");
+        writeString(parser, "35=Sometype");
+
+        Exception exception = assertThrows(TagFormatException.class, () -> {
+            writeString(parser, "tags are not like this");
+        });
+
+        String expectedMessage = TagFormatException.getPrefix() + "tags are not like this";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testIncorrectFormatTag2() {
+        EngineFIX parser = new EngineFIX();
+
+        Exception exception = assertThrows(TagFormatException.class, () -> {
+            writeString(parser, "8 FIX.4.2");
+        });
+
+        String expectedMessage = TagFormatException.getPrefix() + "8 FIX.4.2";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testIncorrectFormatTag3() {
+        EngineFIX parser = new EngineFIX();
+
+        Exception exception = assertThrows(TagFormatException.class, () -> {
+            writeString(parser, "9=ShouldBeAnInteger");
+        });
+
+        String expectedMessage = TagFormatException.getPrefix() + "9=ShouldBeAnInteger";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testIncorrectFormatTag4() throws UnsupportedTagException, TagFormatException, BadTagValueException {
+        EngineFIX parser = new EngineFIX();
+
+        writeString(parser, "35=SomeType");
+
+        Exception exception = assertThrows(TagFormatException.class, () -> {
+            writeString(parser, "38=ShouldBeAnInteger");
+        });
+
+        String expectedMessage = TagFormatException.getPrefix() + "38=ShouldBeAnInteger";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testUnsupportedTag1()
+    {
+        EngineFIX parser = new EngineFIX();
+
+        Exception exception = assertThrows(UnsupportedTagException.class, () -> {
+            writeString(parser, "1337=there\'s not such tag in the FIX protocol");
+        });
+
+        String expectedMessage = UnsupportedTagException.getPrefix() + "1337=there\'s not such tag in the FIX protocol";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testUnsupportedTag2()
+    {
+        EngineFIX parser = new EngineFIX();
+
+        Exception exception = assertThrows(UnsupportedTagException.class, () -> {
+            writeString(parser, "0=there\'s not such tag in the FIX protocol");
+        });
+
+        String expectedMessage = UnsupportedTagException.getPrefix() + "0=there\'s not such tag in the FIX protocol";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testProtocolVersion() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "8=FIX 4.2");
         assertEquals("FIX 4.2", parser.getBeginString());
@@ -24,7 +115,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testBodyLength() {
+    public void testBodyLength() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "9=77");
         assertEquals(77, parser.getBodyLength());
@@ -32,7 +123,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testMsgType() {
+    public void testMsgType() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "35=ThisTheMessageType");
         assertEquals("ThisTheMessageType", parser.getMsgType());
@@ -40,7 +131,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testOrderQty() {
+    public void testOrderQty() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "38=455");
         assertEquals(455, parser.getOrderQty());
@@ -48,7 +139,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testPrice() {
+    public void testPrice() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "44=485");
         assertEquals(485, parser.getPrice());
@@ -56,8 +147,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testSenderCompID1()
-    {
+    public void testSenderCompID1() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "49=me");
         assertEquals("me", parser.getSenderCompID());
@@ -65,8 +155,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testSenderCompID2()
-    {
+    public void testSenderCompID2() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "49=meAgain");
         assertEquals("meAgain", parser.getSenderCompID());
@@ -74,7 +163,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testSenderSubID() {
+    public void testSenderSubID() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "50=BblablaTestID");
         assertEquals("BblablaTestID", parser.getSenderSubID());
@@ -82,8 +171,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testSide1()
-    {
+    public void testSide1() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "54=1");
         assertEquals("buy", parser.getSide());
@@ -91,8 +179,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testSide2()
-    {
+    public void testSide2() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "54=2");
         assertEquals("sell", parser.getSide());
@@ -100,8 +187,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testSymbol1()
-    {
+    public void testSymbol1() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "55=StockName1");
         assertEquals("StockName1", parser.getSymbol());
@@ -109,8 +195,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testSymbol2()
-    {
+    public void testSymbol2() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "55=apple");
         assertEquals("apple", parser.getSymbol());
@@ -118,8 +203,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testTargetCompID1()
-    {
+    public void testTargetCompID1() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "56=nasdaq");
         assertEquals("nasdaq", parser.getTargetCompID());
@@ -127,8 +211,7 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testTargetCompID2()
-    {
+    public void testTargetCompID2() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "56=londonStockExchange");
         assertEquals("londonStockExchange", parser.getTargetCompID());
@@ -136,16 +219,83 @@ public class EngineFIXTest {
     }
 
     @Test
-    public void testChecksum()
+    public void testWrongChecksum1()
     {
         EngineFIX parser = new EngineFIX();
-        writeString(parser, "10=777");
-        assertEquals(777, parser.getCheckSum());
-        assertTrue(parser.isComplete());
+
+        Exception exception = assertThrows(BadTagValueException.class, () -> {
+            writeString(parser, "10=1");
+        });
+
+        String expectedMessage = BadTagValueException.getPrefix() + "10=1";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
     }
 
     @Test
-    public void testWholeMessage1() {
+    public void testWrongChecksum2() throws UnsupportedTagException, BadTagValueException, TagFormatException {
+        EngineFIX parser = new EngineFIX();
+        int expectedBytesRead = 0;
+        int checksum = 0;
+
+        String tag = "8=FIX 4.4";
+        writeString(parser, tag);
+        checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
+
+        tag = "35=SomeType";
+        writeString(parser, tag);
+        checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
+        expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
+
+        tag = "9=" + expectedBytesRead;
+        writeString(parser, tag);
+        checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
+
+        Exception exception = assertThrows(BadTagValueException.class, () -> {
+            writeString(parser, "10=1");
+        });
+
+        String expectedMessage = BadTagValueException.getPrefix() + "10=1";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testWrongBodyLength1() throws UnsupportedTagException, BadTagValueException, TagFormatException {
+        EngineFIX parser = new EngineFIX();
+        int expectedBytesRead = 0;
+        int checksum = 0;
+
+        String tag = "8=FIX 4.4";
+        writeString(parser, tag);
+        checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
+        expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
+
+        tag = "35=SomeType";
+        writeString(parser, tag);
+        checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
+        expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
+
+        tag = "9=1";
+        checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
+        writeString(parser, "9=1");
+
+        Exception exception = assertThrows(BadTagValueException.class, () -> {
+            // This is the wrong checksum, however the parser will raise BadTagValueException for tag 9 first,
+            // which is the expected behaviour in this test.
+            writeString(parser, "10=4");
+        });
+
+        String expectedMessage = BadTagValueException.getPrefix() + "9=1";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void testWholeMessage1() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         int expectedBytesRead = 0;
         int checksum = 0;
 
@@ -221,6 +371,7 @@ public class EngineFIXTest {
 
         tag = "10=" + (checksum % 256);
         writeString(parser, tag);
+
         assertEquals((checksum % 256), parser.getCheckSum());
         assertEquals(expectedBytesRead, parser.getBytesRead());
         assertTrue(parser.isComplete());
