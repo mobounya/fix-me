@@ -27,6 +27,14 @@ public class EngineFIX {
     // Tag 50: we will use this for the 6 digits ID.
     private String   senderSubID;
 
+    // Tag 54: Side of order. (1 = Buy, 2 = Sell)
+    // TODO: parse this from the message.
+    private String side;
+
+    // Tag 55: This tag contains the Group Code for the instrument.
+    // TODO: parse this from the message.
+    private String symbol;
+
     // Tag 56: Identifies entity receiving the message.
     private String   targetCompID;
 
