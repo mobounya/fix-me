@@ -159,6 +159,14 @@ public class EngineFIX {
         return byteArray;
     }
 
+    public static Byte[] toObjectArray(byte[] data)
+    {
+        ArrayList<Byte> list = new ArrayList<>(data.length);
+        for (byte datum : data)
+            list.add(datum);
+        return (Byte[]) list.toArray();
+    }
+
     private void parseTag(String tag) throws UnsupportedTagException, TagFormatException {
         String[] ar = tag.split("=");
         if (ar.length == 2)

@@ -1,8 +1,10 @@
 package engineFIX;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+
 
 public class EngineFIXTest {
     private void writeString(EngineFIX parser, String str) throws UnsupportedTagException, TagFormatException, BadTagValueException {
@@ -22,7 +24,7 @@ public class EngineFIXTest {
         writeString(parser, "8=FIX 4.2");
         writeString(parser, "35=Sometype");
 
-        Exception exception = assertThrows(TagFormatException.class, () -> {
+        Exception exception = Assert.assertThrows(TagFormatException.class, () -> {
             writeString(parser, "tags are not like this");
         });
 
@@ -36,7 +38,7 @@ public class EngineFIXTest {
     public void testIncorrectFormatTag2() {
         EngineFIX parser = new EngineFIX();
 
-        Exception exception = assertThrows(TagFormatException.class, () -> {
+        Exception exception = Assert.assertThrows(TagFormatException.class, () -> {
             writeString(parser, "8 FIX.4.2");
         });
 
@@ -50,7 +52,7 @@ public class EngineFIXTest {
     public void testIncorrectFormatTag3() {
         EngineFIX parser = new EngineFIX();
 
-        Exception exception = assertThrows(TagFormatException.class, () -> {
+        Exception exception = Assert.assertThrows(TagFormatException.class, () -> {
             writeString(parser, "9=ShouldBeAnInteger");
         });
 
@@ -66,7 +68,7 @@ public class EngineFIXTest {
 
         writeString(parser, "35=SomeType");
 
-        Exception exception = assertThrows(TagFormatException.class, () -> {
+        Exception exception = Assert.assertThrows(TagFormatException.class, () -> {
             writeString(parser, "38=ShouldBeAnInteger");
         });
 
@@ -81,7 +83,7 @@ public class EngineFIXTest {
     {
         EngineFIX parser = new EngineFIX();
 
-        Exception exception = assertThrows(UnsupportedTagException.class, () -> {
+        Exception exception = Assert.assertThrows(UnsupportedTagException.class, () -> {
             writeString(parser, "1337=there\'s not such tag in the FIX protocol");
         });
 
@@ -96,7 +98,7 @@ public class EngineFIXTest {
     {
         EngineFIX parser = new EngineFIX();
 
-        Exception exception = assertThrows(UnsupportedTagException.class, () -> {
+        Exception exception = Assert.assertThrows(UnsupportedTagException.class, () -> {
             writeString(parser, "0=there\'s not such tag in the FIX protocol");
         });
 
@@ -111,7 +113,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "8=FIX 4.2");
         assertEquals("FIX 4.2", parser.getBeginString());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -119,7 +121,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "9=77");
         assertEquals(77, parser.getBodyLength());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -127,7 +129,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "35=ThisTheMessageType");
         assertEquals("ThisTheMessageType", parser.getMsgType());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -135,7 +137,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "38=455");
         assertEquals(455, parser.getOrderQty());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -143,7 +145,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "44=485");
         assertEquals(485, parser.getPrice());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -151,7 +153,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "49=me");
         assertEquals("me", parser.getSenderCompID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -159,7 +161,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "49=meAgain");
         assertEquals("meAgain", parser.getSenderCompID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -167,7 +169,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "50=BblablaTestID");
         assertEquals("BblablaTestID", parser.getSenderSubID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -175,7 +177,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "54=1");
         assertEquals("buy", parser.getSide());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -183,7 +185,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "54=2");
         assertEquals("sell", parser.getSide());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -191,7 +193,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "55=StockName1");
         assertEquals("StockName1", parser.getSymbol());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -199,7 +201,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "55=apple");
         assertEquals("apple", parser.getSymbol());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -207,7 +209,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "56=nasdaq");
         assertEquals("nasdaq", parser.getTargetCompID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -215,7 +217,7 @@ public class EngineFIXTest {
         EngineFIX parser = new EngineFIX();
         writeString(parser, "56=londonStockExchange");
         assertEquals("londonStockExchange", parser.getTargetCompID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
     }
 
     @Test
@@ -223,7 +225,7 @@ public class EngineFIXTest {
     {
         EngineFIX parser = new EngineFIX();
 
-        Exception exception = assertThrows(BadTagValueException.class, () -> {
+        Exception exception = Assert.assertThrows(BadTagValueException.class, () -> {
             writeString(parser, "10=1");
         });
 
@@ -252,7 +254,7 @@ public class EngineFIXTest {
         writeString(parser, tag);
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
-        Exception exception = assertThrows(BadTagValueException.class, () -> {
+        Exception exception = Assert.assertThrows(BadTagValueException.class, () -> {
             writeString(parser, "10=1");
         });
 
@@ -282,7 +284,7 @@ public class EngineFIXTest {
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
         writeString(parser, "9=1");
 
-        Exception exception = assertThrows(BadTagValueException.class, () -> {
+        Exception exception = Assert.assertThrows(BadTagValueException.class, () -> {
             // This is the wrong checksum, however the parser will raise BadTagValueException for tag 9 first,
             // which is the expected behaviour in this test.
             writeString(parser, "10=4");
@@ -304,69 +306,69 @@ public class EngineFIXTest {
         String tag = "8=FIX 4.4";
         writeString(parser, tag);
         assertEquals("FIX 4.4", parser.getBeginString());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "35=SomeType";
         writeString(parser, tag);
         assertEquals("SomeType", parser.getMsgType());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "38=329";
         writeString(parser, tag);
         assertEquals(329, parser.getOrderQty());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "44=69";
         writeString(parser, tag);
         assertEquals(69, parser.getPrice());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "49=me";
         writeString(parser, tag);
         assertEquals("me", parser.getSenderCompID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "50=DAP1sASA";
         writeString(parser, tag);
         assertEquals("DAP1sASA", parser.getSenderSubID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag= "54=1";
         writeString(parser, tag);
         assertEquals("buy", parser.getSide());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "55=APLLE";
         writeString(parser, tag);
         assertEquals("APLLE", parser.getSymbol());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "56=nasdaq";
         writeString(parser, tag);
         assertEquals("nasdaq", parser.getTargetCompID());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "9=" + expectedBytesRead;
         writeString(parser, tag);
         assertEquals(expectedBytesRead, parser.getBodyLength());
-        assertFalse(parser.isComplete());
+        Assert.assertFalse(parser.isComplete());
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
         tag = "10=" + (checksum % 256);
@@ -374,6 +376,6 @@ public class EngineFIXTest {
 
         assertEquals((checksum % 256), parser.getCheckSum());
         assertEquals(expectedBytesRead, parser.getBytesRead());
-        assertTrue(parser.isComplete());
+        Assert.assertTrue(parser.isComplete());
     }
 }
