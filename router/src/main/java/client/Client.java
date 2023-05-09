@@ -13,7 +13,6 @@ public abstract class Client implements Comparable<Client> {
     private final InetSocketAddress remoteAddress;
     private final SocketChannel socket;
 
-
     public Client()
     {
         this.parser = null;
@@ -75,8 +74,7 @@ public abstract class Client implements Comparable<Client> {
                 this.name = parser.getSenderCompID();
         } catch (Exception e)
         {
-            // TODO: handle this.
-            System.out.println(e.getMessage());
+            System.out.println("Exception: " + e.getMessage());
         }
     }
 

@@ -31,16 +31,7 @@ public class Server {
 
     private MarketClient findTargetMarket(String marketName)
     {
-        if (marketName == null) {
-            System.out.println("Why market name is NULL ?!?!");
-            System.exit(74);
-        }
         for (MarketClient client : this.marketClients.values()) {
-            if (client.getName() == null)
-            {
-                System.out.println("Why name is NULL ?!?!");
-                System.exit(69);
-            }
             if (client.getName().compareTo(marketName) == 0)
                 return client;
         }
@@ -90,10 +81,14 @@ public class Server {
         {
             BrokerClient broker = brokerClients.get(remoteAddress.getPort());
             broker.read(buffer.array(), bytesRead);
-            System.out.println("Reading data from broker " + broker.getUniqueID());
-            if (broker.messageComplete())
+            if (broker.parser.isBroken())
             {
-                System.out.println("Broker message is complete");
+                System.err.println("Broker message is broken");
+                socketChannel.register(selector, SelectionKey.OP_WRITE);
+
+            }
+            else if (broker.messageComplete())
+            {
                 // We finished parsing the message, let's try to pair this broker with the target market.
                 String targetMarketName = broker.getTargetMarket();
                 Client marketClient = findTargetMarket(targetMarketName);
@@ -112,10 +107,13 @@ public class Server {
         {
             MarketClient market = marketClients.get(remoteAddress.getPort());
             market.read(buffer.array(), bytesRead);
-            System.out.println("Reading data from market " + market.getName());
-            if (market.messageComplete())
+            if (market.parser.isBroken())
             {
-                System.out.println("Market message is complete");
+                System.err.println("Market message is broken");
+                socketChannel.register(selector, SelectionKey.OP_WRITE);
+            }
+            else if (market.messageComplete())
+            {
                 socketChannel.register(selector, SelectionKey.OP_WRITE);
 
                 // Market is identifying itself, nothing to forward.
@@ -136,11 +134,23 @@ public class Server {
         if (localAddress.getPort() == brokerPort)
         {
             Client broker = brokerClients.get(remoteAddress.getPort());
-            Client targetMarket = routingTable.get(broker);
+            // Broker is broken which means it's not paired to any market,
+            // send a reject message instead.
+            if (broker.parser.isBroken())
+            {
+                String message = EngineFIX.getFixRejectMessage();
+                byte[] bytes = message.getBytes();
+                socketChannel.write(ByteBuffer.wrap(bytes));
+                socketChannel.register(selector, SelectionKey.OP_READ);
+                broker.clean();
+            }
 
+            // Broker is valid which means there's a market paired with it
+            // in the routing table, see if there's a response from market,
+            // and forward it to the broker.
+            Client targetMarket = routingTable.get(broker);
             if (targetMarket != null && targetMarket.messageComplete())
             {
-                System.out.println("Writing to broker " + broker.getUniqueID());
                 byte[] bytes = EngineFIX.toPrimitiveArray(targetMarket.parser.getRawData());
                 socketChannel.write(ByteBuffer.wrap(bytes));
                 socketChannel.register(selector, SelectionKey.OP_READ);
@@ -150,13 +160,29 @@ public class Server {
         if (localAddress.getPort() == marketPort)
         {
             Client market = marketClients.get(remoteAddress.getPort());
-            Client targetBroker = routingTable.get(market);
-
-            if (targetBroker != null && targetBroker.messageComplete())
+            if (market.parser.isBroken())
             {
-                System.out.println("Writing to market " + market.getName());
-                byte[] bytes = EngineFIX.toPrimitiveArray(targetBroker.parser.getRawData());
+                String message = EngineFIX.getFixRejectMessage();
+                byte[] bytes = message.getBytes();
                 socketChannel.write(ByteBuffer.wrap(bytes));
+                socketChannel.register(selector, SelectionKey.OP_READ);
+                market.clean();
+            }
+
+            Client targetBroker = routingTable.get(market);
+            if (targetBroker != null)
+            {
+                if (targetBroker.parser.isBroken())
+                {
+                    String rejectMessage = EngineFIX.getFixRejectMessage();
+                    byte[] bytes = rejectMessage.getBytes();
+                    socketChannel.write(ByteBuffer.wrap(bytes));
+                }
+                else if (targetBroker.messageComplete())
+                {
+                    byte[] bytes = EngineFIX.toPrimitiveArray(targetBroker.parser.getRawData());
+                    socketChannel.write(ByteBuffer.wrap(bytes));
+                }
                 socketChannel.register(selector, SelectionKey.OP_READ);
                 targetBroker.clean();
             }

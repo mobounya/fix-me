@@ -3,6 +3,9 @@ package engineFIX;
 import java.util.ArrayList;
 
 public class EngineFIX {
+    private static final String supportedFixVersion = "FIX.4.4";
+    private static final char fixDelimiter = 0x1; // (SOH) character.
+
     // This is where we store the raw data of the message.
     private ArrayList<Byte> rawData;
 
@@ -47,8 +50,11 @@ public class EngineFIX {
 
     private String lastParsedTag;
 
+    private boolean broken;
+
     public EngineFIX()
     {
+        this.broken = false;
         this.complete = false;
         this.asciiSum = 0;
         this.rawData = new ArrayList<>();
@@ -112,6 +118,24 @@ public class EngineFIX {
 
     public String getSide() {
         return side;
+    }
+
+    public boolean isBroken()
+    {
+        return broken;
+    }
+
+    public static String getFixRejectMessage()
+    {
+        String beginString = "8=" + supportedFixVersion + fixDelimiter;
+        // j means reject. (case sensitive)
+        String msgType = "35=j" + fixDelimiter;
+
+        int contentLength = msgType.length();
+        String bodyLength = "9=" + contentLength + fixDelimiter;
+
+        String checksum = "10=" + EngineFIX.calculateCheckSum(beginString + bodyLength + msgType) + fixDelimiter;
+        return beginString + bodyLength + msgType + checksum;
     }
 
     // Note: this method does not calculate the 0x1 (SOH) character.
@@ -215,6 +239,7 @@ public class EngineFIX {
         } else
         {
             lastParsedTag = ar[0];
+            broken = true;
             throw new TagFormatException(lastParsedTag);
         }
     }
@@ -238,15 +263,27 @@ public class EngineFIX {
             }
         } catch (NumberFormatException e)
         {
+            broken = true;
             throw new TagFormatException(lastParsedTag);
         }
 
         if (isComplete())
         {
             if (bytesRead != getBodyLength())
+            {
+                broken = true;
                 throw new BadTagValueException("9=" + getBodyLength());
+            }
             if (checkSum != getAsciiSum())
+            {
+                broken = true;
                 throw new BadTagValueException("10=" + getCheckSum());
+            }
         }
+    }
+
+    public boolean isReject()
+    {
+        return (this.msgType != null && this.msgType.compareTo("j") == 0);
     }
 }
