@@ -8,12 +8,13 @@ import java.nio.channels.SocketChannel;
 import java.util.Random;
 
 public abstract class Client implements Comparable<Client> {
-    public EngineFIX parser;
-    private final String uniqueID;
-    private String name;
+    public EngineFIX                parser;
+    private final String            uniqueID;
+    private String                  name;
     private final InetSocketAddress remoteAddress;
-    private final SocketChannel socket;
-    private boolean targetFound;
+    private final SocketChannel     socket;
+    private boolean                 targetFound;
+    private boolean                 valid;
 
     public Client()
     {
@@ -21,7 +22,8 @@ public abstract class Client implements Comparable<Client> {
         this.uniqueID = null;
         this.remoteAddress = null;
         this.socket = null;
-        this.targetFound = false;
+        this.targetFound = true;
+        this.valid = true;
     }
 
     public Client(String uniqueID, InetSocketAddress address, SocketChannel socket)
@@ -31,6 +33,8 @@ public abstract class Client implements Comparable<Client> {
         this.remoteAddress = address;
         this.socket = socket;
         this.name = null;
+        this.valid = true;
+        this.targetFound = true;
     }
 
     public static String generateRandomString(int len)
@@ -79,8 +83,20 @@ public abstract class Client implements Comparable<Client> {
         return this.targetFound;
     }
 
+    public void setValid(boolean val)
+    {
+        this.valid = val;
+    }
+
+    public boolean isValid()
+    {
+        return this.valid;
+    }
+
     public void read(byte[] data, int size)
     {
+        if (size <= 0)
+            return ;
         try {
             Byte[] bytes = new Byte[size];
 

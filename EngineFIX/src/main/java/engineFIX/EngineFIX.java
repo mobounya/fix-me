@@ -28,7 +28,7 @@ public class EngineFIX {
     private int     price;
 
     // Tag 49: Identifies entity sending the message.
-    private String  SenderCompID;
+    private String senderCompID;
 
     // Tag 50: we will use this for the 6 digits ID.
     private String   senderSubID;
@@ -50,11 +50,11 @@ public class EngineFIX {
 
     private String lastParsedTag;
 
-    private boolean broken;
+    private boolean valid;
 
     public EngineFIX()
     {
-        this.broken = false;
+        this.valid = true;
         this.complete = false;
         this.asciiSum = 0;
         this.rawData = new ArrayList<>();
@@ -105,7 +105,7 @@ public class EngineFIX {
     }
 
     public String getSenderCompID() {
-        return SenderCompID;
+        return senderCompID;
     }
 
     public int getAsciiSum() {
@@ -120,9 +120,9 @@ public class EngineFIX {
         return side;
     }
 
-    public boolean isBroken()
+    public boolean isValid()
     {
-        return broken;
+        return valid;
     }
 
     public static String getFixRejectMessage()
@@ -208,7 +208,7 @@ public class EngineFIX {
             {
                 // 2 bytes for the "=" and 0x1 (SOH) characters.
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
-                this.SenderCompID = ar[1];
+                this.senderCompID = ar[1];
             }
             else if (ar[0].compareTo("50") == 0)
             {
@@ -235,7 +235,10 @@ public class EngineFIX {
                 this.targetCompID = ar[1];
             }
             else
+            {
+                valid = false;
                 throw new UnsupportedTagException(lastParsedTag);
+            }
 
             // calculate Sum.
             if (ar[0].compareTo("10") != 0)
@@ -248,7 +251,7 @@ public class EngineFIX {
         } else
         {
             lastParsedTag = ar[0];
-            broken = true;
+            valid = false;
             throw new TagFormatException(lastParsedTag);
         }
     }
@@ -272,7 +275,7 @@ public class EngineFIX {
             }
         } catch (NumberFormatException e)
         {
-            broken = true;
+            valid = false;
             throw new TagFormatException(lastParsedTag);
         }
 
@@ -280,12 +283,12 @@ public class EngineFIX {
         {
             if (bytesRead != getBodyLength())
             {
-                broken = true;
+                valid = false;
                 throw new BadTagValueException("9=" + getBodyLength());
             }
             if (checkSum != getAsciiSum())
             {
-                broken = true;
+                valid = false;
                 throw new BadTagValueException("10=" + getCheckSum());
             }
         }

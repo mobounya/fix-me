@@ -76,13 +76,16 @@ public class Broker {
     }
 
     private boolean readResponse() throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
+        EngineFIX parser = new EngineFIX();
         byte[] res = new byte[1000];
         int bytesRead = this.inputStream.read(res);
-        res = ByteBuffer.wrap(res).slice(0, bytesRead).array();
-        System.out.println("Consuming response...");
-        EngineFIX parser = new EngineFIX();
-        parser.consume(EngineFIX.toObjectArray(res));
-        System.out.println("Done with response");
+        if (bytesRead > 0)
+        {
+            res = ByteBuffer.wrap(res).slice(0, bytesRead).array();
+            System.out.println("Consuming response...");
+            parser.consume(EngineFIX.toObjectArray(res));
+            System.out.println("Done with response");
+        }
         return !(parser.isReject());
     }
 
