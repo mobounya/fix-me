@@ -134,8 +134,9 @@ public class EngineFIX {
         int contentLength = msgType.length();
         String bodyLength = "9=" + contentLength + fixDelimiter;
 
-        String checksum = "10=" + EngineFIX.calculateCheckSum(beginString + bodyLength + msgType) + fixDelimiter;
-        return beginString + bodyLength + msgType + checksum;
+        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType) % 256;
+        String checksumStr = "10=" + checksum + fixDelimiter;
+        return beginString + bodyLength + msgType + checksumStr;
     }
 
     // Note: this method does not calculate the 0x1 (SOH) character.
@@ -164,7 +165,7 @@ public class EngineFIX {
         ArrayList<Byte> list = new ArrayList<>(data.length);
         for (byte datum : data)
             list.add(datum);
-        return (Byte[]) list.toArray();
+        return list.toArray(new Byte[0]);
     }
 
     private void parseTag(String tag) throws UnsupportedTagException, TagFormatException {

@@ -1,7 +1,13 @@
 package broker;
 
+import engineFIX.BadTagValueException;
+import engineFIX.EngineFIX;
+import engineFIX.TagFormatException;
+import engineFIX.UnsupportedTagException;
+
 import java.io.*;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 
 public class Broker {
     private static final int brokerPort = 5000;
@@ -51,7 +57,7 @@ public class Broker {
         String FIXMessage = beginStringTag + bodyLength + targetCompID + sideTag + orderQtyTag + priceTag;
 
         // Calculate the checksum and append it to message.
-        int checksum = Broker.calculateCheckSum(FIXMessage);
+        int checksum = Broker.calculateCheckSum(FIXMessage) % 256;
         return FIXMessage.concat("10=" + String.valueOf(checksum) + delimiter);
     }
 
@@ -65,8 +71,24 @@ public class Broker {
         return true;
     }
 
+    private void sendRequest(String message) throws IOException {
+        this.outputStream.write(message.getBytes());
+    }
+
+    private boolean readResponse() throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
+        byte[] res = new byte[1000];
+        int bytesRead = this.inputStream.read(res);
+        res = ByteBuffer.wrap(res).slice(0, bytesRead).array();
+        System.out.println("Consuming response...");
+        EngineFIX parser = new EngineFIX();
+        parser.consume(EngineFIX.toObjectArray(res));
+        System.out.println("Done with response");
+        return !(parser.isReject());
+    }
+
     public void start() {
         try {
+            this.connect();
             BufferedReader userInputReader = new BufferedReader(new InputStreamReader(System.in));
 
             String market;
@@ -102,9 +124,12 @@ public class Broker {
             } while (!isInteger(price));
 
             String FIXMessage = Broker.constructFixMessage(market, type, quantity, price);
-            FIXMessage = FIXMessage.replaceAll("\\x01", "|");
-            System.out.println(FIXMessage);
-        } catch (IOException e) {
+            sendRequest(FIXMessage);
+            if (readResponse())
+                System.out.println("Success");
+            else
+                System.out.println("Failed");
+        } catch (Exception e) {
             System.err.println(e.getMessage());
         }
     }

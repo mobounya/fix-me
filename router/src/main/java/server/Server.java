@@ -85,18 +85,20 @@ public class Server {
             {
                 System.err.println("Broker message is broken");
                 socketChannel.register(selector, SelectionKey.OP_WRITE);
-
             }
             else if (broker.messageComplete())
             {
+                socketChannel.register(selector, SelectionKey.OP_WRITE);
+
                 // We finished parsing the message, let's try to pair this broker with the target market.
                 String targetMarketName = broker.getTargetMarket();
                 Client marketClient = findTargetMarket(targetMarketName);
 
                 if (marketClient == null)
-                    System.exit(1);
-
-                socketChannel.register(selector, SelectionKey.OP_WRITE);
+                {
+                    broker.clearMarketFound();
+                    return;
+                }
 
                 // Let's pair the two clients in the routing table, so we can know where to forward the response from market.
                 routingTable.put(broker, marketClient);
@@ -136,7 +138,7 @@ public class Server {
             Client broker = brokerClients.get(remoteAddress.getPort());
             // Broker is broken which means it's not paired to any market,
             // send a reject message instead.
-            if (broker.parser.isBroken())
+            if (!broker.isTargetFound() || broker.parser.isBroken())
             {
                 String message = EngineFIX.getFixRejectMessage();
                 byte[] bytes = message.getBytes();

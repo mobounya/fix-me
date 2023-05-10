@@ -1,5 +1,6 @@
 package client;
 
+
 import engineFIX.EngineFIX;
 
 import java.net.InetSocketAddress;
@@ -7,11 +8,12 @@ import java.nio.channels.SocketChannel;
 import java.util.Random;
 
 public abstract class Client implements Comparable<Client> {
-    public  EngineFIX parser;
+    public EngineFIX parser;
     private final String uniqueID;
     private String name;
     private final InetSocketAddress remoteAddress;
     private final SocketChannel socket;
+    private boolean targetFound;
 
     public Client()
     {
@@ -19,6 +21,7 @@ public abstract class Client implements Comparable<Client> {
         this.uniqueID = null;
         this.remoteAddress = null;
         this.socket = null;
+        this.targetFound = false;
     }
 
     public Client(String uniqueID, InetSocketAddress address, SocketChannel socket)
@@ -59,6 +62,21 @@ public abstract class Client implements Comparable<Client> {
 
     public SocketChannel getSocket() {
         return socket;
+    }
+
+    public void setMarketFound()
+    {
+        this.targetFound = true;
+    }
+
+    public void clearMarketFound()
+    {
+        this.targetFound = false;
+    }
+
+    public boolean isTargetFound()
+    {
+        return this.targetFound;
     }
 
     public void read(byte[] data, int size)
