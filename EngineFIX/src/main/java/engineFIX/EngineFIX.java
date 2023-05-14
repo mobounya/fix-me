@@ -42,7 +42,7 @@ public class EngineFIX {
     // Tag 56: Identifies entity receiving the message.
     private String   targetCompID;
 
-    private int      asciiSum;
+    public int      asciiSum;
 
     private boolean complete;
 
@@ -125,18 +125,55 @@ public class EngineFIX {
         return valid;
     }
 
-    public static String getFixRejectMessage()
+    public static String getFixRejectMessage(String uniqueId)
     {
         String beginString = "8=" + supportedFixVersion + fixDelimiter;
+
         // j means reject. (case sensitive)
         String msgType = "35=j" + fixDelimiter;
 
-        int contentLength = msgType.length();
+        String senderSubID = "50=" + uniqueId + fixDelimiter;
+
+        int contentLength = msgType.length() + senderSubID.length();
         String bodyLength = "9=" + contentLength + fixDelimiter;
 
-        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType) % 256;
+        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType + senderSubID) % 256;
         String checksumStr = "10=" + checksum + fixDelimiter;
-        return beginString + bodyLength + msgType + checksumStr;
+        return beginString + bodyLength + senderSubID + msgType + checksumStr;
+    }
+
+    public static String constructSuccessMessage(String uniqueId)
+    {
+        String beginString = "8=" + supportedFixVersion + fixDelimiter;
+
+        // s means Success. (case sensitive)
+        String msgType = "35=s" + fixDelimiter;
+
+        String senderSubID = "50=" + uniqueId + fixDelimiter;
+
+        int contentLength = msgType.length() + senderSubID.length();
+        String bodyLength = "9=" + contentLength + fixDelimiter;
+
+        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType + senderSubID) % 256;
+        String checksumStr = "10=" + checksum + fixDelimiter;
+        return beginString + bodyLength + senderSubID + msgType + checksumStr;
+    }
+
+    public static String constructIdentificationMessage(String uniqueId, String name)
+    {
+        String beginString = "8=" + supportedFixVersion + fixDelimiter;
+        // A means logon. (case sensitive)
+        String msgType = "35=A" + fixDelimiter;
+
+        String senderSubID = "50=" + uniqueId + fixDelimiter;
+        String senderCompID = "49=" + name + fixDelimiter;
+
+        int contentLength = msgType.length() + senderSubID.length() + senderCompID.length();
+        String bodyLength = "9=" + contentLength + fixDelimiter;
+
+        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType + senderCompID + senderSubID) % 256;
+        String checksumStr = "10=" + checksum + fixDelimiter;
+        return beginString + bodyLength + msgType + senderCompID + senderSubID + checksumStr;
     }
 
     // Note: this method does not calculate the 0x1 (SOH) character.
@@ -297,5 +334,10 @@ public class EngineFIX {
     public boolean isReject()
     {
         return (this.msgType != null && this.msgType.compareTo("j") == 0);
+    }
+
+    public boolean isSuccess()
+    {
+        return (this.msgType != null && this.msgType.compareTo("s") == 0);
     }
 }

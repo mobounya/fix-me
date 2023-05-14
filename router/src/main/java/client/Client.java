@@ -11,23 +11,32 @@ public abstract class Client implements Comparable<Client> {
     public EngineFIX                parser;
     private final String            uniqueID;
     private String                  name;
+    private final String            clientType;
     private final InetSocketAddress remoteAddress;
     private final SocketChannel     socket;
+
     private boolean                 targetFound;
     private boolean                 valid;
+    private boolean                 idSent;
+
+    public int                     cleaned;
 
     public Client()
     {
+        this.cleaned = 0;
         this.parser = null;
         this.uniqueID = null;
         this.remoteAddress = null;
         this.socket = null;
         this.targetFound = true;
         this.valid = true;
+        this.idSent = false;
+        this.clientType = null;
     }
 
-    public Client(String uniqueID, InetSocketAddress address, SocketChannel socket)
+    public Client(String uniqueID, InetSocketAddress address, SocketChannel socket, String clientType)
     {
+        this.cleaned = 0;
         this.parser = new EngineFIX();
         this.uniqueID = uniqueID;
         this.remoteAddress = address;
@@ -35,6 +44,8 @@ public abstract class Client implements Comparable<Client> {
         this.name = null;
         this.valid = true;
         this.targetFound = true;
+        this.idSent = false;
+        this.clientType = clientType;
     }
 
     public static String generateRandomString(int len)
@@ -43,7 +54,9 @@ public abstract class Client implements Comparable<Client> {
         int min = 33;
         int max = 126;
 
-        return random.ints(min, max + 1).limit(len).toString();
+        return random.ints(min, max + 1).limit(len).
+                collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
     }
 
     public String getUniqueID() {
@@ -93,6 +106,25 @@ public abstract class Client implements Comparable<Client> {
         return this.valid;
     }
 
+    public boolean isIdSent()
+    {
+        return this.idSent;
+    }
+
+    public void setIdSent()
+    {
+        this.idSent = true;
+    }
+
+    public void clearIdSent()
+    {
+        this.idSent = false;
+    }
+
+    public String getClientType() {
+        return clientType;
+    }
+
     public void read(byte[] data, int size)
     {
         if (size <= 0)
@@ -109,6 +141,8 @@ public abstract class Client implements Comparable<Client> {
         } catch (Exception e)
         {
             System.out.println("Exception: " + e.getMessage());
+            System.out.println("Unique id: " + this.getUniqueID());
+            System.exit(1);
         }
     }
 
@@ -123,6 +157,9 @@ public abstract class Client implements Comparable<Client> {
 
     public void clean()
     {
+        this.cleaned++;
         this.parser = new EngineFIX();
+        this.targetFound = true;
+        this.valid = true;
     }
 }

@@ -64,7 +64,7 @@ public class Server {
             marketClients.put(remoteAddress.getPort(), new MarketClient(uniqueID, localAddress, socketChannel));
         }
 
-        socketChannel.register(selector, SelectionKey.OP_READ);
+        socketChannel.register(selector, SelectionKey.OP_WRITE);
     }
 
     private void read(Selector selector, SelectionKey key) throws IOException {
@@ -78,66 +78,75 @@ public class Server {
 
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         int bytesRead = socketChannel.read(buffer);
+
         if (bytesRead <= 0)
             return ;
+
+        Client client = null;
+
         if (localAddress.getPort() == brokerPort)
+            client = brokerClients.get(remoteAddress.getPort());
+        if (localAddress.getPort() == marketPort)
+            client = marketClients.get(remoteAddress.getPort());
+
+        System.out.println("Client " + client.getName() + " is reading...");
+        client.read(buffer.array(), bytesRead);
+
+        // Client is invalid due to some error in the request.
+        if (!client.parser.isValid())
         {
-            BrokerClient broker = brokerClients.get(remoteAddress.getPort());
-            broker.read(buffer.array(), bytesRead);
-            if (!broker.parser.isValid())
+            System.err.println("Client message is broken");
+            System.exit(1);
+            socketChannel.register(selector, SelectionKey.OP_WRITE);
+        }
+        // Client message is complete without errors.
+        else if (client.messageComplete())
+        {
+            socketChannel.register(selector, SelectionKey.OP_WRITE);
+            System.out.println("Client message is complete");
+
+            // unique id sent need to be the same on as assigned at first.
+            if (client.isIdSent() && !client.getUniqueID().equals(client.parser.getSenderSubID()))
             {
-                System.err.println("Broker message is broken");
-                socketChannel.register(selector, SelectionKey.OP_WRITE);
+                System.err.println("Unique id: " + client.getUniqueID() + " doesn't match id assigned: " + client.parser.getSenderSubID());
+                System.exit(1);
+                client.setValid(false);
+                return ;
             }
-            else if (broker.messageComplete())
+
+            // Client need to provide a name.
+            if (client.getName() == null)
             {
-                socketChannel.register(selector, SelectionKey.OP_WRITE);
+                System.err.println("Client didn't provide a name");
+                System.exit(1);
+                client.setValid(false);
+                return ;
+            }
 
-                // We finished parsing the message, let's try to pair this broker with the target market.
-                String targetMarketName = broker.getTargetMarket();
-                Client marketClient = findTargetMarket(targetMarketName);
+            // If this is an identification message (A), there's nothing to send back, clean client
+            if (client.parser.getMsgType().compareTo("A") == 0)
+            {
+                client.clean();
+                return ;
+            }
 
-                if (marketClient == null)
+            // Only brokers need to be paired in the routing table.
+            if (client.getClientType().equals("broker") && routingTable.get(client) == null)
+            {
+                String targetClientName = client.getTargetMarket();
+                Client targetClient = findTargetMarket(targetClientName);
+
+                if (targetClient == null)
                 {
-                    System.out.println("Target market: " + targetMarketName + " not found");
-                    broker.clearMarketFound();
-                    return;
+                    System.err.println("Target client: " + targetClientName + " not found");
+                    client.clearMarketFound();
+                    return ;
                 }
 
                 // Let's pair the two clients in the routing table, so we can know where to forward the response from market.
-                System.out.println("Paired broker: " + broker.getName() + " with " + marketClient.getName());
-                routingTable.put(broker, marketClient);
-                routingTable.put(marketClient, broker);
-            }
-        }
-        if (localAddress.getPort() == marketPort)
-        {
-            System.out.println("Parsing market data...");
-            MarketClient market = marketClients.get(remoteAddress.getPort());
-            market.read(buffer.array(), bytesRead);
-
-            if (!market.parser.isValid())
-            {
-                System.err.println("Market message is invalid");
-                socketChannel.register(selector, SelectionKey.OP_WRITE);
-            }
-            else if (market.messageComplete())
-            {
-                // Invalidate market, market need to provide name.
-                if (market.getName() == null)
-                {
-                    System.out.println("Invalid market request, market name not provided");
-                    market.setValid(false);
-                }
-
-                // Market is identifying itself, nothing to forward.
-                if (market.parser.getMsgType().compareTo("identification") == 0)
-                {
-                    System.out.println("Market: " + market.getName() + " identified himself");
-                    market.clean();
-                }
-
-                socketChannel.register(selector, SelectionKey.OP_WRITE);
+                System.out.println("Paired client: " + client.getName() + " with target " + targetClient.getName());
+                routingTable.put(client, targetClient);
+                routingTable.put(targetClient, client);
             }
         }
     }
@@ -150,68 +159,48 @@ public class Server {
         InetSocketAddress localAddress = (InetSocketAddress) socketChannel.getLocalAddress();
         InetSocketAddress remoteAddress = (InetSocketAddress) socketChannel.getRemoteAddress();
 
+        Client client = null;
+
         if (localAddress.getPort() == brokerPort)
-        {
-            Client broker = brokerClients.get(remoteAddress.getPort());
-            // Broker is broken which means it's not paired to any market,
-            // send a reject message instead.
-            if (!broker.isTargetFound() || !broker.parser.isValid())
-            {
-                if (!broker.isTargetFound())
-                    System.out.println("Target " + broker.getTargetMarket() + " is not found");
-                if (!broker.parser.isValid())
-                    System.out.println("Broker message is broken");
-                String message = EngineFIX.getFixRejectMessage();
-                byte[] bytes = message.getBytes();
-                socketChannel.write(ByteBuffer.wrap(bytes));
-                socketChannel.register(selector, SelectionKey.OP_READ);
-                broker.clean();
-            }
-
-            // Broker is valid which means there's a market paired with it
-            // in the routing table, see if there's a response from market,
-            // and forward it to the broker.
-            Client targetMarket = routingTable.get(broker);
-            if (targetMarket != null && targetMarket.messageComplete())
-            {
-                System.out.println("Forwarded market: " + targetMarket.getName() + " to broker");
-                byte[] bytes = EngineFIX.toPrimitiveArray(targetMarket.parser.getRawData());
-                socketChannel.write(ByteBuffer.wrap(bytes));
-                socketChannel.register(selector, SelectionKey.OP_READ);
-                targetMarket.clean();
-            }
-        }
+            client = brokerClients.get(remoteAddress.getPort());
         if (localAddress.getPort() == marketPort)
-        {
-            Client market = marketClients.get(remoteAddress.getPort());
-            if (!market.parser.isValid())
-            {
-                System.out.println("Market message is invalid");
-                String message = EngineFIX.getFixRejectMessage();
-                byte[] bytes = message.getBytes();
-                socketChannel.write(ByteBuffer.wrap(bytes));
-                socketChannel.register(selector, SelectionKey.OP_READ);
-                market.clean();
-            }
+            client = marketClients.get(remoteAddress.getPort());
 
-            Client targetBroker = routingTable.get(market);
-            if (targetBroker != null)
-            {
-                if (!targetBroker.parser.isValid())
-                {
-                    String rejectMessage = EngineFIX.getFixRejectMessage();
-                    byte[] bytes = rejectMessage.getBytes();
-                    socketChannel.write(ByteBuffer.wrap(bytes));
-                }
-                else if (targetBroker.messageComplete())
-                {
-                    System.out.println("Forwarded broker: " + targetBroker.getName() + " to market: " + market.getName());
-                    byte[] bytes = EngineFIX.toPrimitiveArray(targetBroker.parser.getRawData());
-                    socketChannel.write(ByteBuffer.wrap(bytes));
-                }
-                socketChannel.register(selector, SelectionKey.OP_READ);
-                targetBroker.clean();
-            }
+        // Client is broken which means it's not paired to any other client,
+        // send a reject message.
+        if (!client.isTargetFound() || !client.parser.isValid())
+        {
+            if (!client.isTargetFound())
+                System.err.println("Target " + client.getTargetMarket() + " is not found");
+            if (!client.parser.isValid())
+                System.err.println("Broker message is broken");
+            String message = EngineFIX.getFixRejectMessage(client.getUniqueID());
+            byte[] bytes = message.getBytes();
+            socketChannel.write(ByteBuffer.wrap(bytes));
+            socketChannel.register(selector, SelectionKey.OP_READ);
+            client.clean();
+        }
+
+        // Send a unique id to the client, if we didn't send it before.
+        if (!client.isIdSent())
+        {
+            System.out.println("Sending unique id: " + client.getUniqueID() + " to client");
+            String message = EngineFIX.constructIdentificationMessage(client.getUniqueID(), "does not matter here");
+            socketChannel.write(ByteBuffer.wrap(message.getBytes()));
+            socketChannel.register(selector, SelectionKey.OP_READ);
+            client.setIdSent();
+            return ;
+        }
+
+        Client targetClient = routingTable.get(client);
+
+        if (targetClient != null && targetClient.messageComplete())
+        {
+            System.out.println("Writing data to " + client.getName() + " from " + targetClient.getName());
+            byte[] bytes = EngineFIX.toPrimitiveArray(targetClient.parser.getRawData());
+            socketChannel.write(ByteBuffer.wrap(bytes));
+            socketChannel.register(selector, SelectionKey.OP_READ);
+            targetClient.clean();
         }
     }
 
