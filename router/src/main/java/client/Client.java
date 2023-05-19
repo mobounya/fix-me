@@ -141,8 +141,6 @@ public abstract class Client implements Comparable<Client> {
         } catch (Exception e)
         {
             System.out.println("Exception: " + e.getMessage());
-            System.out.println("Unique id: " + this.getUniqueID());
-            System.exit(1);
         }
     }
 

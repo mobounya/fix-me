@@ -106,13 +106,12 @@ public class Broker {
                 parser.consume(EngineFIX.toObjectArray(res));
                 if (parser.isComplete())
                 {
-                    String assignedUniqueId = parser.getSenderSubID();
-                    if (assignedUniqueId == null)
+                    if (parser.isSessionReject())
                     {
-                        System.err.println("Response need to include a unique id from the router.");
+                        System.err.println("Broker got rejected");
                         System.exit(1);
                     }
-                    this.uniqueId = assignedUniqueId;
+                    this.uniqueId = parser.getSenderSubID();
                     this.parser = new EngineFIX();
                     break ;
                 }
@@ -120,11 +119,16 @@ public class Broker {
         }
     }
 
+    public void sendIdentificationMessage() throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
+        String message = EngineFIX.constructIdentificationMessage(uniqueId, name);
+        outputStream.write(message.getBytes());
+    }
+
     private void readResponse() throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
         while (!parser.isComplete())
         {
             byte[] res = new byte[1000];
-            System.out.println("Reading data from input stream");
+            System.out.println("Input stream is reading...");
             int bytesRead = this.inputStream.read(res);
             if (bytesRead > 0)
             {
@@ -132,8 +136,7 @@ public class Broker {
                 parser.consume(EngineFIX.toObjectArray(res));
                 if (parser.isComplete())
                 {
-                    System.out.println("Parser is complete");
-                    if (parser.isReject())
+                    if (parser.isBusinessReject())
                         System.out.println("Transaction rejected");
                     if (parser.isSuccess())
                         System.out.println("Transaction success");
@@ -147,7 +150,7 @@ public class Broker {
     public void start() {
         try {
             this.connect();
-            // Read unique id.
+            sendIdentificationMessage();
             readUniqueId();
             System.out.println("Unique id: " + uniqueId);
             while (true)

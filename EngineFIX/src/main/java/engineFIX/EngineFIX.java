@@ -125,11 +125,11 @@ public class EngineFIX {
         return valid;
     }
 
-    public static String getFixRejectMessage(String uniqueId)
+    public static String getFixBusinessRejectMessage(String uniqueId)
     {
         String beginString = "8=" + supportedFixVersion + fixDelimiter;
 
-        // j means reject. (case sensitive)
+        // j = Business Level Reject. (case sensitive)
         String msgType = "35=j" + fixDelimiter;
 
         String senderSubID = "50=" + uniqueId + fixDelimiter;
@@ -141,6 +141,22 @@ public class EngineFIX {
         String checksumStr = "10=" + checksum + fixDelimiter;
         return beginString + bodyLength + senderSubID + msgType + checksumStr;
     }
+
+    public static String getFixSessionRejectMessage()
+    {
+        String beginString = "8=" + supportedFixVersion + fixDelimiter;
+
+        // 3 = Session Level Reject. (case sensitive)
+        String msgType = "35=3" + fixDelimiter;
+
+        int contentLength = msgType.length();
+        String bodyLength = "9=" + contentLength + fixDelimiter;
+
+        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType) % 256;
+        String checksumStr = "10=" + checksum + fixDelimiter;
+        return beginString + bodyLength + msgType + checksumStr;
+    }
+
 
     public static String constructSuccessMessage(String uniqueId)
     {
@@ -331,9 +347,13 @@ public class EngineFIX {
         }
     }
 
-    public boolean isReject()
+    public boolean isBusinessReject()
     {
         return (this.msgType != null && this.msgType.compareTo("j") == 0);
+    }
+
+    public boolean isSessionReject() {
+        return (this.msgType != null && this.msgType.compareTo("3") == 0);
     }
 
     public boolean isSuccess()

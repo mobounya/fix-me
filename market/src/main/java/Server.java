@@ -12,7 +12,8 @@ public class Server {
     private static final String host = "localhost";
     private static final String FIXVersion = "FIX 4.2";
     private static final char delimiter = 0x1;
-    private static final String marketName = "nasdaq";
+
+    private final String marketName;
 
     private InputStream inputStream;
     private OutputStream outputStream;
@@ -20,8 +21,9 @@ public class Server {
     private String uniqueId;
     private EngineFIX parser;
 
-    Server()
+    Server(String name)
     {
+        this.marketName = name;
         this.parser = new EngineFIX();
         this.uniqueId = null;
     }
@@ -33,7 +35,7 @@ public class Server {
     }
 
     public void sendRejectMessage() throws IOException {
-        String message = EngineFIX.getFixRejectMessage(this.uniqueId);
+        String message = EngineFIX.getFixBusinessRejectMessage(uniqueId);
         outputStream.write(message.getBytes());
     }
 
@@ -51,7 +53,6 @@ public class Server {
         while (!parser.isComplete())
         {
             byte[] res = new byte[1000];
-            System.out.println("Reading from socket input stream...");
             int bytesRead = this.inputStream.read(res);
             if (bytesRead > 0)
             {
@@ -59,13 +60,12 @@ public class Server {
                 parser.consume(EngineFIX.toObjectArray(res));
                 if (parser.isComplete())
                 {
-                    String assignedUniqueId = parser.getSenderSubID();
-                    if (assignedUniqueId == null)
+                    if (parser.isSessionReject())
                     {
-                        System.err.println("Response need to include a unique id from the router.");
+                        System.err.println("Identification rejected");
                         System.exit(1);
                     }
-                    this.uniqueId = assignedUniqueId;
+                    this.uniqueId = parser.getSenderSubID();
                     this.parser = new EngineFIX();
                     break ;
                 }
@@ -84,10 +84,7 @@ public class Server {
                 parser.consume(EngineFIX.toObjectArray(res));
                 if (parser.isComplete())
                 {
-                    BufferedReader buffer = new BufferedReader(new InputStreamReader(System.in));
-                    System.out.println("Press enter to continue");
-                    String str = buffer.readLine();
-                    if (parser.getSymbol().compareTo("apple") == 0)
+                    if (parser.getSymbol().equals("apple"))
                     {
                         sendSuccessMessage();
                         System.out.println("Sent success message");
@@ -98,6 +95,7 @@ public class Server {
                         System.out.println("Sent reject message");
                     }
                     parser = new EngineFIX();
+                    break ;
                 }
             }
         }
@@ -107,13 +105,13 @@ public class Server {
     {
         try {
             connect();
-            readUniqueId();
-            System.out.println("Assigned unique id: " + uniqueId);
             sendIdentificationMessage();
+            readUniqueId();
+            System.out.println("Unique id: " + uniqueId);
             while (true)
             {
                 readResponse();
-                System.exit(1);
+                System.out.println("Read response");
             }
         } catch (Exception e)
         {
