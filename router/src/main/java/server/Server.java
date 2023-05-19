@@ -109,8 +109,8 @@ public class Server {
         // Client message is complete without errors.
         else if (client.messageComplete())
         {
-            System.out.println("Client message is complete");
             socketChannel.register(selector, SelectionKey.OP_WRITE);
+            System.out.println("Client message is complete");
 
             // unique id sent need to be the same on as assigned at first.
             if (client.isIdSent() && !client.getUniqueID().equals(client.parser.getSenderSubID()))
@@ -143,28 +143,24 @@ public class Server {
                         this.marketNames.add(client.getName());
                         client.clean();
                     }
-                } else
-                    client.clean();
-                return ;
-            }
-
-            // Only brokers need to be paired in the routing table.
-            if (client.getClientType().equals("broker") && routingTable.get(client) == null)
-            {
-                String targetClientName = client.getTargetMarket();
-                Client targetClient = findTargetMarket(targetClientName);
-
-                if (targetClient == null)
+                } else if (client.getClientType().equals("broker"))
                 {
-                    System.err.println("Target client: " + targetClientName + " not found");
-                    client.clearMarketFound();
-                    return ;
-                }
+                    String targetClientName = client.getTargetMarket();
+                    Client targetClient = findTargetMarket(targetClientName);
 
-                // Let's pair the two clients in the routing table, so we can know where to forward the response from market.
-                System.out.println("Paired client: " + client.getName() + " with target " + targetClient.getName());
-                routingTable.put(client, targetClient);
-                routingTable.put(targetClient, client);
+                    if (targetClient == null)
+                    {
+                        System.err.println("Target client: " + targetClientName + " not found");
+                        client.clearMarketFound();
+                        return ;
+                    }
+
+                    // Let's pair the two clients in the routing table, so we can know where to forward the response from market.
+                    System.out.println("Paired client: " + client.getName() + " with target " + targetClient.getName());
+                    routingTable.put(client, targetClient);
+                    routingTable.put(targetClient, client);
+                    client.clean();
+                }
             }
         }
     }
@@ -201,7 +197,7 @@ public class Server {
         if (!client.isIdSent())
         {
             System.out.println("Sending unique id: " + client.getUniqueID() + " to client");
-            String message = EngineFIX.constructIdentificationMessage(client.getUniqueID(), "does not matter here");
+            String message = EngineFIX.constructIdentificationMessage(client.getUniqueID(), "does not matter here", client.getName());
             socketChannel.write(ByteBuffer.wrap(message.getBytes()));
             if (client.getClientType().equals("market"))
                 socketChannel.register(selector, SelectionKey.OP_WRITE);

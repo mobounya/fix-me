@@ -45,7 +45,7 @@ public class Server {
     }
 
     public void sendIdentificationMessage() throws IOException {
-        String message = EngineFIX.constructIdentificationMessage(uniqueId, marketName);
+        String message = EngineFIX.constructIdentificationMessage(uniqueId, marketName, marketName);
         outputStream.write(message.getBytes());
     }
 

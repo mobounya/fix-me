@@ -15,6 +15,7 @@ public class Broker {
     private static final String FIXVersion = "FIX 4.2";
     private static final char delimiter = 0x1;
 
+    private boolean connected;
     private InputStream inputStream;
     private OutputStream outputStream;
 
@@ -27,12 +28,17 @@ public class Broker {
         this.uniqueId = null;
         this.parser = new EngineFIX();
         this.name = name;
+        this.connected = false;
     }
 
     private void connect() throws IOException {
-        Socket socket = new Socket(host, brokerPort);
-        this.inputStream = socket.getInputStream();
-        this.outputStream = socket.getOutputStream();
+        if (!this.connected)
+        {
+            Socket socket = new Socket(host, brokerPort);
+            this.inputStream = socket.getInputStream();
+            this.outputStream = socket.getOutputStream();
+            connected = true;
+        }
     }
 
     private static boolean isInteger(String str)
@@ -94,7 +100,7 @@ public class Broker {
         this.outputStream.write(message.getBytes());
     }
 
-    private void readUniqueId() throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
+    private boolean readUniqueId() throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
         while (!parser.isComplete())
         {
             byte[] res = new byte[1000];
@@ -106,21 +112,18 @@ public class Broker {
                 parser.consume(EngineFIX.toObjectArray(res));
                 if (parser.isComplete())
                 {
-                    if (parser.isSessionReject())
-                    {
-                        System.err.println("Broker got rejected");
-                        System.exit(1);
-                    }
+                    boolean success = !(parser.isSessionReject());
                     this.uniqueId = parser.getSenderSubID();
                     this.parser = new EngineFIX();
-                    break ;
+                    return success;
                 }
             }
         }
+        return false;
     }
 
-    public void sendIdentificationMessage() throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
-        String message = EngineFIX.constructIdentificationMessage(uniqueId, name);
+    public void sendIdentificationMessage(String target) throws IOException, UnsupportedTagException, BadTagValueException, TagFormatException {
+        String message = EngineFIX.constructIdentificationMessage(uniqueId, name, target);
         outputStream.write(message.getBytes());
     }
 
@@ -149,22 +152,23 @@ public class Broker {
 
     public void start() {
         try {
-            this.connect();
-            sendIdentificationMessage();
-            readUniqueId();
-            System.out.println("Unique id: " + uniqueId);
+            BufferedReader userInputReader = new BufferedReader(new InputStreamReader(System.in));
+
+            String market;
+            String prompt = "What market would like to connect with: ";
+
+            do {
+                System.out.print(prompt);
+                market = userInputReader.readLine();
+                prompt = "Can't connect to this market\nEnter target market name: ";
+                connect();
+                sendIdentificationMessage(market);
+            } while (market.length() <= 0 || !readUniqueId());
+
+            System.out.println("Assigned unique id: " + uniqueId);
+
             while (true)
             {
-                BufferedReader userInputReader = new BufferedReader(new InputStreamReader(System.in));
-
-                String market;
-                String prompt = "Enter target market name: ";
-                do {
-                    System.out.print(prompt);
-                    market = userInputReader.readLine();
-                    prompt = "Target market name can't be empty\nEnter target market name: ";
-                } while (market.length() <= 0);
-
                 String instrument;
                 prompt = "Enter instrument name: ";
                 do {
@@ -180,7 +184,6 @@ public class Broker {
                     type = userInputReader.readLine().toLowerCase();
                     prompt = "Order type should be either Buy or Sell\nEnter order type (Buy/Sell): ";
                 } while (type.compareTo("buy") != 0 && type.compareTo("sell") != 0);
-
 
                 String quantity;
                 prompt = "Enter quantity: ";

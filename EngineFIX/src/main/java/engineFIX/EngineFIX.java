@@ -175,7 +175,7 @@ public class EngineFIX {
         return beginString + bodyLength + senderSubID + msgType + checksumStr;
     }
 
-    public static String constructIdentificationMessage(String uniqueId, String name)
+    public static String constructIdentificationMessage(String uniqueId, String name, String target)
     {
         String beginString = "8=" + supportedFixVersion + fixDelimiter;
         // A means logon. (case sensitive)
@@ -183,13 +183,14 @@ public class EngineFIX {
 
         String senderSubID = "50=" + uniqueId + fixDelimiter;
         String senderCompID = "49=" + name + fixDelimiter;
+        String targetCompID = "56=" + target + fixDelimiter;
 
-        int contentLength = msgType.length() + senderSubID.length() + senderCompID.length();
+        int contentLength = msgType.length() + senderSubID.length() + senderCompID.length() + targetCompID.length();
         String bodyLength = "9=" + contentLength + fixDelimiter;
 
-        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType + senderCompID + senderSubID) % 256;
+        int checksum = EngineFIX.calculateCheckSum(beginString + bodyLength + msgType + senderCompID + senderSubID + targetCompID) % 256;
         String checksumStr = "10=" + checksum + fixDelimiter;
-        return beginString + bodyLength + msgType + senderCompID + senderSubID + checksumStr;
+        return beginString + bodyLength + msgType + senderCompID + senderSubID + targetCompID + checksumStr;
     }
 
     // Note: this method does not calculate the 0x1 (SOH) character.
