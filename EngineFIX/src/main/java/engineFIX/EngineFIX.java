@@ -273,10 +273,7 @@ public class EngineFIX {
             else if (ar[0].compareTo("54") == 0)
             {
                 this.bytesRead += ar[0].length() + ar[1].length() + 2;
-                if (ar[1].compareTo("1") == 0)
-                    this.side = "buy";
-                else if (ar[1].compareTo("2") == 0)
-                    this.side = "sell";
+                this.side = ar[1];
             }
             else if (ar[0].compareTo("55") == 0)
             {

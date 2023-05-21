@@ -24,12 +24,11 @@ public class Market {
         if (price >= availablePrice && quantity <= availableQuantity) {
             purchased = true;
             actualInstrument.setQuantity(availableQuantity - quantity);
-            // TODO: change the price of the instrument.
         }
         return purchased;
     }
 
-    public int sellImplement(Instrument instrument, int price, int quantity)
+    private int sellImplement(Instrument instrument, int price, int quantity)
     {
         Instrument marketInstrument = findInstrument(instrument);
         // We do not sell this instrument currently, Add it with the given price.
@@ -74,24 +73,6 @@ public class Market {
         return findInstrument(instrument);
     }
 
-    public boolean buy(Instrument instrument, int quantity)
-    {
-        Instrument marketInstrument = findInstrument(instrument);
-        if (marketInstrument == null)
-            return false;
-        else
-            return buyImplement(marketInstrument, marketInstrument.getPrice(), quantity);
-    }
-
-    public boolean buy(String instrumentName, int quantity)
-    {
-        Instrument instrument = new Instrument(instrumentName);
-        return buy(instrument, quantity);
-    }
-
-    /*
-     * Try to buy an instrument for a price rather than for market price.
-     * */
     public boolean buy(Instrument instrument, int price, int quantity)
     {
         Instrument marketInstrument = findInstrument(instrument);
@@ -101,37 +82,8 @@ public class Market {
             return buyImplement(marketInstrument, price, quantity);
     }
 
-    public boolean buy(String instrumentName, int price, int quantity)
-    {
-        Instrument instrument = new Instrument(instrumentName);
-        return buy(instrument, price, quantity);
-    }
-
     public int sell(Instrument instrument, int price, int quantity)
     {
         return this.sellImplement(instrument, price, quantity);
-    }
-
-    public int sell(String instrumentName, int price, int quantity)
-    {
-        Instrument instrument = new Instrument(instrumentName);
-        return this.sellImplement(instrument, price, quantity);
-    }
-
-    public int sell(Instrument instrument, int quantity)
-    {
-        Instrument marketInstrument = getInstrumentData(instrument);
-        if (marketInstrument == null)
-        {
-            int defaultPrice = 12;
-            return this.sellImplement(marketInstrument, defaultPrice, quantity);
-        }
-        return this.sellImplement(marketInstrument, marketInstrument.getPrice(), quantity);
-    }
-
-    public int sell(String instrumentName, int quantity)
-    {
-        Instrument instrument = new Instrument(instrumentName);
-        return this.sell(instrument, quantity);
     }
 }

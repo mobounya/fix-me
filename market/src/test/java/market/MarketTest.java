@@ -2,32 +2,12 @@ package market;
 
 import org.junit.Test;
 
+import java.util.Objects;
+import java.util.concurrent.Future;
+
 import static org.junit.Assert.*;
 
 public class MarketTest {
-
-    @Test
-    public void testSuccessfulMarketPriceBuy1() {
-        Market market = new Market();
-        Instrument instrument = new Instrument("google");
-        int originalQuantity = market.getInstrumentData(instrument).getQuantity();
-        boolean purchased = market.buy(instrument, 50);
-        int newQuantity = market.getInstrumentData(instrument).getQuantity();
-        assertTrue(purchased);
-        assertEquals(newQuantity, (originalQuantity - 50));
-    }
-
-    @Test
-    public void testSuccessfulMarketPriceBuy2() {
-        Market market = new Market();
-        Instrument instrument = new Instrument("oracle");
-        int originalQuantity = market.getInstrumentData(instrument).getQuantity();
-        boolean purchased = market.buy(instrument, 10);
-        int newQuantity = market.getInstrumentData(instrument).getQuantity();
-        assertTrue(purchased);
-        assertEquals(newQuantity, (originalQuantity - 10));
-    }
-
     @Test
     public void testSuccessfulBuy1() {
         Market market = new Market();
@@ -55,7 +35,7 @@ public class MarketTest {
         Market market = new Market();
         Instrument instrument = new Instrument("oracle");
         int originalQuantity = market.getInstrumentData(instrument).getQuantity();
-        boolean purchased = market.buy(instrument, 17, 65);
+        boolean purchased = market.buy(instrument, 17, originalQuantity + 1);
         int newQuantity = market.getInstrumentData(instrument).getQuantity();
         assertFalse(purchased);
         assertEquals(newQuantity, originalQuantity);
@@ -66,7 +46,8 @@ public class MarketTest {
         Market market = new Market();
         Instrument instrument = new Instrument("apple");
         int originalQuantity = market.getInstrumentData(instrument).getQuantity();
-        boolean purchased = market.buy(instrument, 51);
+        int originalPrice = market.getInstrumentData(instrument).getPrice();
+        boolean purchased = market.buy(instrument, originalPrice, originalQuantity + 1);
         int newQuantity = market.getInstrumentData(instrument).getQuantity();
         assertFalse(purchased);
         assertEquals(newQuantity, originalQuantity);
@@ -99,7 +80,7 @@ public class MarketTest {
         Market market = new Market();
         Instrument instrument = new Instrument("companydoesnotexist");
         Instrument marketInstrument = market.getInstrumentData(instrument);
-        boolean purchased = market.buy(instrument, 20);
+        boolean purchased = market.buy(instrument, 20, 20);
         assertNull(marketInstrument);
         assertFalse(purchased);
     }
@@ -109,7 +90,7 @@ public class MarketTest {
         Market market = new Market();
         Instrument instrument = new Instrument("companydoesnotexistagain");
         Instrument marketInstrument = market.getInstrumentData(instrument);
-        boolean purchased = market.buy(instrument, 20);
+        boolean purchased = market.buy(instrument, 20, 20);
         assertNull(marketInstrument);
         assertFalse(purchased);
     }
@@ -118,7 +99,7 @@ public class MarketTest {
     public void testSellNewInstrument1() {
         Market market = new Market();
         Instrument myNewInstrument = new Instrument("MyNewCompany1");
-        int price = market.sell(myNewInstrument.getName(), 15, 100);
+        int price = market.sell(myNewInstrument, 15, 100);
         assertEquals(price, 15);
         assertEquals(15, market.getInstrumentData(myNewInstrument).getPrice());
         assertEquals(100, market.getInstrumentData(myNewInstrument).getQuantity());
@@ -128,12 +109,12 @@ public class MarketTest {
     public void testSellNewInstrument2() {
         Market market = new Market();
         Instrument myNewInstrument = new Instrument("NewCompany");
-        market.sell(myNewInstrument.getName(), 15, 100);
+        market.sell(myNewInstrument, 15, 100);
         // Buy all the new instruments to make the supply 0.
-        market.buy(myNewInstrument, 100);
+        market.buy(myNewInstrument, 15, 100);
         assertEquals(0, market.getInstrumentData(myNewInstrument).getQuantity());
         // Sell the new instrument again.
-        int price = market.sell(myNewInstrument.getName(), 69, 1000);
+        int price = market.sell(myNewInstrument, 69, 1000);
         assertEquals(69, price);
         assertEquals(1000, market.getInstrumentData(myNewInstrument).getQuantity());
         assertEquals(69, market.getInstrumentData(myNewInstrument).getPrice());
@@ -148,7 +129,7 @@ public class MarketTest {
         int originalQuantity = market.getInstrumentData(instrument).getQuantity();
         int originalPrice = market.getInstrumentData(instrument).getPrice();
         // Reduce the price of the instrument.
-        int marketPrice = market.sell(instrument.getName(), 25, 100);
+        int marketPrice = market.sell(instrument, 25, 100);
         assertEquals(originalQuantity + 100, market.getInstrumentData(instrument).getQuantity());
         assertNotEquals(marketPrice, originalPrice);
     }
@@ -161,7 +142,7 @@ public class MarketTest {
         int originalQuantity = market.getInstrumentData(instrument).getQuantity();
         int originalPrice = market.getInstrumentData(instrument).getPrice();
         // Keep the price of the instrument as is.
-        int marketPrice = market.sell(instrument.getName(), 12, 100);
+        int marketPrice = market.sell(instrument, 12, 100);
         assertEquals(originalQuantity + 100, market.getInstrumentData(instrument).getQuantity());
         assertEquals(originalPrice, marketPrice);
     }
@@ -174,7 +155,7 @@ public class MarketTest {
         int originalQuantity = market.getInstrumentData(instrument).getQuantity();
         int originalPrice = market.getInstrumentData(instrument).getPrice();
         // Keep the price of the instrument as is.
-        int marketPrice = market.sell(instrument.getName(), 8, 1);
+        int marketPrice = market.sell(instrument, 8, 1);
         assertEquals(originalQuantity + 1, market.getInstrumentData(instrument).getQuantity());
         assertEquals(originalPrice, marketPrice);
     }
@@ -187,7 +168,7 @@ public class MarketTest {
         int originalQuantity = market.getInstrumentData(instrument).getQuantity();
         int originalPrice = market.getInstrumentData(instrument).getPrice();
         // Increase the price of the instrument.
-        int marketPrice = market.sell(instrument.getName(), 9, 50);
+        int marketPrice = market.sell(instrument, 9, 50);
         assertEquals(originalQuantity + 50, market.getInstrumentData(instrument).getQuantity());
         assertNotEquals(originalPrice, marketPrice);
     }

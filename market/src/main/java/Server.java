@@ -2,6 +2,8 @@ import engineFIX.BadTagValueException;
 import engineFIX.EngineFIX;
 import engineFIX.TagFormatException;
 import engineFIX.UnsupportedTagException;
+import market.Instrument;
+import market.Market;
 
 import java.io.*;
 import java.net.Socket;
@@ -21,11 +23,14 @@ public class Server {
     private String uniqueId;
     private EngineFIX parser;
 
+    private Market market;
+
     Server(String name)
     {
         this.marketName = name;
         this.parser = new EngineFIX();
         this.uniqueId = null;
+        this.market = new Market();
     }
 
     public void connect() throws IOException {
@@ -84,15 +89,45 @@ public class Server {
                 parser.consume(EngineFIX.toObjectArray(res));
                 if (parser.isComplete())
                 {
-                    if (parser.getSymbol().equals("apple"))
-                    {
-                        sendSuccessMessage();
-                        System.out.println("Sent success message");
-                    }
-                    else
+                    String instrumentName = parser.getSymbol();
+                    Instrument instrument = new Instrument(instrumentName);
+                    int quantity = parser.getOrderQty();
+                    int price = parser.getPrice();
+                    String side = parser.getSide();
+
+                    if (quantity == 0 || instrumentName == null || side == null)
                     {
                         sendRejectMessage();
-                        System.out.println("Sent reject message");
+                        System.err.println("Invalid buy/sell request");
+                        this.parser = new EngineFIX();
+                        break ;
+                    }
+
+                    // if price is 0, we will buy or sell the instrument at market price.
+                    if (price == 0)
+                    {
+                        Instrument marketInstrument = market.getInstrumentData(instrument);
+                        if (marketInstrument != null)
+                            price = marketInstrument.getPrice();
+                    }
+
+                    if (side.equals("buy"))
+                    {
+                        if (market.buy(instrument, price, quantity))
+                        {
+                            sendSuccessMessage();
+                            System.out.println("Successfully bought " + quantity + " of " + instrumentName + " at " + price);
+                        }
+                        else
+                        {
+                            sendRejectMessage();
+                            System.err.println("Failed to buy " + quantity + " of " + instrumentName + "at " + price);
+                        }
+                    } else if (side.equals("sell"))
+                    {
+                        int actualSellingPrice = market.sell(instrument, price, quantity);
+                        sendSuccessMessage();
+                        System.out.println("Successfully sold " + quantity + " of " + instrumentName + " at " + actualSellingPrice);
                     }
                     parser = new EngineFIX();
                     break ;
@@ -107,15 +142,12 @@ public class Server {
             connect();
             sendIdentificationMessage();
             readUniqueId();
-            System.out.println("Unique id: " + uniqueId);
+            System.out.println("Assigned id: " + uniqueId);
             while (true)
-            {
                 readResponse();
-                System.out.println("Read response");
-            }
         } catch (Exception e)
         {
-            System.out.println("Market: " + e.getMessage());
+            System.out.println(e.getMessage());
         }
     }
 }

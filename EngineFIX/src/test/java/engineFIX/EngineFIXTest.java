@@ -175,7 +175,7 @@ public class EngineFIXTest {
     @Test
     public void testSide1() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
-        writeString(parser, "54=1");
+        writeString(parser, "54=buy");
         assertEquals("buy", parser.getSide());
         Assert.assertFalse(parser.isComplete());
     }
@@ -183,7 +183,7 @@ public class EngineFIXTest {
     @Test
     public void testSide2() throws UnsupportedTagException, TagFormatException, BadTagValueException {
         EngineFIX parser = new EngineFIX();
-        writeString(parser, "54=2");
+        writeString(parser, "54=sell");
         assertEquals("sell", parser.getSide());
         Assert.assertFalse(parser.isComplete());
     }
@@ -344,7 +344,7 @@ public class EngineFIXTest {
         expectedBytesRead += tag.length() + 1; // 1 byte for the 0x1 (SOH) char.
         checksum += EngineFIX.calculateCheckSum(tag) + 0x1;
 
-        tag= "54=1";
+        tag= "54=buy";
         writeString(parser, tag);
         assertEquals("buy", parser.getSide());
         Assert.assertFalse(parser.isComplete());

@@ -7,48 +7,48 @@ public class Instrument implements Comparable<Instrument> {
     private int price;
     private int quantity;
 
-    Instrument(String name, int price, int quantity)
+    public Instrument(String name, int price, int quantity)
     {
         this.name = name;
         this.price = price;
         this.quantity = quantity;
     }
 
-    Instrument(String name, int price)
+    public Instrument(String name, int price)
     {
         this.name = name;
         this.price = price;
         this.quantity = 0;
     }
 
-    Instrument(String name)
+    public Instrument(String name)
     {
         this.name = name;
         this.price = 0;
         this.quantity = 0;
     }
 
-    String getName()
+    public String getName()
     {
         return this.name;
     }
 
-    int getPrice()
+    public int getPrice()
     {
         return this.price;
     }
 
-    void setPrice(int newPrice)
+    public void setPrice(int newPrice)
     {
         this.price = newPrice;
     }
 
-    int getQuantity()
+    public int getQuantity()
     {
         return this.quantity;
     }
 
-    void setQuantity(int newQuantity)
+    public void setQuantity(int newQuantity)
     {
         this.quantity = newQuantity;
     }

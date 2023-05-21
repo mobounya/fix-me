@@ -74,12 +74,7 @@ public class Broker {
 
         String senderCompID = "49=" + name + delimiter;
 
-        String sideTag = "54=";
-        if (operationType.compareTo("buy") == 0)
-            sideTag = sideTag.concat("1");
-        else if (operationType.compareTo("sell") == 0)
-            sideTag = sideTag.concat("2");
-        sideTag += delimiter;
+        String sideTag = "54=" + operationType + delimiter;
 
         String symbolTag = "55=" + symbol + delimiter;
         String orderQtyTag = "38=" + quantity + delimiter;
