@@ -121,7 +121,7 @@ public class Server {
                         else
                         {
                             sendRejectMessage();
-                            System.err.println("Failed to buy " + quantity + " of " + instrumentName + "at " + price);
+                            System.err.println("Failed to buy " + quantity + " of " + instrumentName + " at " + price);
                         }
                     } else if (side.equals("sell"))
                     {
@@ -138,6 +138,7 @@ public class Server {
 
     public void start()
     {
+        System.out.println("Started " + marketName + " market");
         try {
             connect();
             sendIdentificationMessage();

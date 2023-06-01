@@ -99,8 +99,9 @@ public class Broker {
         while (!parser.isComplete())
         {
             byte[] res = new byte[1000];
-            System.out.println("Reading from socket input stream...");
             int bytesRead = this.inputStream.read(res);
+            if (bytesRead == -1)
+                System.exit(0);
             if (bytesRead > 0)
             {
                 res = ByteBuffer.wrap(res).slice(0, bytesRead).array();
@@ -126,8 +127,9 @@ public class Broker {
         while (!parser.isComplete())
         {
             byte[] res = new byte[1000];
-            System.out.println("Input stream is reading...");
             int bytesRead = this.inputStream.read(res);
+            if (bytesRead == -1)
+                System.exit(0);
             if (bytesRead > 0)
             {
                 res = ByteBuffer.wrap(res).slice(0, bytesRead).array();
