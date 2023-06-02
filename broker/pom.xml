@@ -4,18 +4,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>leet-java</groupId>
+        <groupId>fix-me</groupId>
         <artifactId>fix-me</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <groupId>org.example</groupId>
     <artifactId>broker</artifactId>
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
                 <configuration>
                     <source>17</source>
                     <target>17</target>
@@ -24,4 +25,11 @@
         </plugins>
     </build>
 
+    <dependencies>
+        <dependency>
+            <groupId>fix-me</groupId>
+            <artifactId>EngineFIX</artifactId>
+            <version>1.1</version>
+        </dependency>
+    </dependencies>
 </project>
