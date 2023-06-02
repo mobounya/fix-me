@@ -122,6 +122,7 @@ public class Server {
                 client = brokerClients.get(remoteAddress.getPort());
             }
         }
+
         if (localAddress.getPort() == marketPort)
         {
             synchronized (marketClients)
@@ -190,14 +191,35 @@ public class Server {
                                 String targetClientName = finalClient.getTargetMarket();
                                 Client targetClient = findTargetMarket(targetClientName);
 
-                                if (targetClient == null)
-                                {
+                                if (targetClient == null) {
                                     System.err.println("Target client: " + targetClientName + " not found");
                                     finalClient.clearMarketFound();
                                     finalClient.setClientState(Client.INVALID);
                                     socketChannel.register(selector, SelectionKey.OP_WRITE);
                                     selector.wakeup();
-                                    return ;
+                                    return;
+                                }
+                                Client temp = routingTable.get(targetClient);
+                                // Client you're trying to connect to is already paired.
+                                if (temp != null)
+                                {
+                                    ByteBuffer buf = ByteBuffer.allocate(1);
+                                    // if the target Market is already paired with another broker
+                                    // check if the broker is still open, if not allow this broker
+                                    // to be paired with it, else mark message as invalid.
+                                    if (temp.getSocket().read(buf) != -1) {
+                                        finalClient.setValid(false);
+                                        System.err.println("Market " + targetClientName + " is already connected to a broker");
+                                        socketChannel.register(selector, SelectionKey.OP_WRITE);
+                                        selector.wakeup();
+                                        return ;
+                                    } else
+                                    {
+                                        System.out.println("Market " + targetClientName + " is connected to a closed broker, cleaning old broker...");
+                                        brokerClients.remove(temp.getRemoteAddress().getPort());
+                                        routingTable.remove(targetClient);
+                                        routingTable.remove(temp);
+                                    }
                                 }
 
                                 // Let's pair the two clients in the routing table, so we can know where to forward the response from market.
