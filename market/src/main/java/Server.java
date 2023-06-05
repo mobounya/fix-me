@@ -1,3 +1,4 @@
+import logger.Logger;
 import engineFIX.BadTagValueException;
 import engineFIX.EngineFIX;
 import engineFIX.TagFormatException;
@@ -67,7 +68,7 @@ public class Server {
                 {
                     if (parser.isSessionReject())
                     {
-                        System.err.println("Identification rejected");
+                        Logger.logError("Identification rejected");
                         System.exit(1);
                     }
                     this.uniqueId = parser.getSenderSubID();
@@ -98,7 +99,7 @@ public class Server {
                     if (quantity == 0 || instrumentName == null || side == null)
                     {
                         sendRejectMessage();
-                        System.err.println("Invalid buy/sell request");
+                        Logger.logError("Invalid buy/sell request");
                         this.parser = new EngineFIX();
                         break ;
                     }
@@ -116,18 +117,18 @@ public class Server {
                         if (market.buy(instrument, price, quantity))
                         {
                             sendSuccessMessage();
-                            System.out.println("Successfully bought " + quantity + " of " + instrumentName + " at " + price);
+                            Logger.logSuccess("Successfully bought " + quantity + " of " + instrumentName + " at " + price);
                         }
                         else
                         {
                             sendRejectMessage();
-                            System.err.println("Failed to buy " + quantity + " of " + instrumentName + " at " + price);
+                            Logger.logError("Failed to buy " + quantity + " of (" + instrumentName + ") at " + price);
                         }
                     } else if (side.equals("sell"))
                     {
                         int actualSellingPrice = market.sell(instrument, price, quantity);
                         sendSuccessMessage();
-                        System.out.println("Successfully sold " + quantity + " of " + instrumentName + " at " + actualSellingPrice);
+                        Logger.logSuccess("Successfully sold " + quantity + " of " + instrumentName + " at " + actualSellingPrice);
                     }
                     parser = new EngineFIX();
                     break ;
