@@ -17,6 +17,7 @@
         <module>broker</module>
         <module>market</module>
         <module>EngineFIX</module>
+        <module>logger</module>
     </modules>
     <dependencies>
         <dependency>

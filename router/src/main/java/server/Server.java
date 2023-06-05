@@ -1,5 +1,7 @@
 package server;
 
+
+import logger.Logger;
 import client.*;
 import engineFIX.EngineFIX;
 import java.io.IOException;
@@ -77,7 +79,7 @@ public class Server {
                         {
                             brokerClients.put(remoteAddress.getPort(), new BrokerClient(uniqueID, localAddress, socketChannel));
                         }
-                        System.out.println("Registered Broker with Id: " + uniqueID);
+                        Logger.logSuccess("Registered broker with Id: " + uniqueID);
                     }
                     if (localAddress.getPort() == marketPort)
                     {
@@ -86,7 +88,7 @@ public class Server {
                         {
                             marketClients.put(remoteAddress.getPort(), new MarketClient(uniqueID, localAddress, socketChannel));
                         }
-                        System.out.println("Registered market with Id: " + uniqueID);
+                        Logger.logSuccess("Registered market with Id: " + uniqueID);
                     }
                     socketChannel.register(selector, SelectionKey.OP_READ);
                     selector.wakeup();
@@ -140,35 +142,35 @@ public class Server {
                     if (finalClient.getClientState() >= Client.INVALID)
                         return ;
 
-                    System.out.println("Client " + finalClient.getName() + " is reading...");
+                    Logger.logInfo("Client (" + finalClient.getName() + ") is reading...");
+
                     finalClient.read(buffer.array(), bytesRead);
 
                     // Client is invalid due to some error in the request.
                     if (!finalClient.parser.isValid())
                     {
-                        System.err.println("Client message is broken");
+                        Logger.logError("Client message is broken");
                         System.exit(1);
                     }
-
                     // Client message is complete without errors.
                     else if (finalClient.messageComplete())
                     {
-                        System.out.println("Client message is complete");
+                        Logger.logInfo("Client completed reading message");
 
                         // unique id sent need to be the same on as assigned at first.
                         if (finalClient.isIdSent() && !finalClient.getUniqueID().equals(finalClient.parser.getSenderSubID()))
                         {
-                            System.err.println("Unique id: " + finalClient.getUniqueID() + " doesn't match id assigned: " + finalClient.parser.getSenderSubID());
+                            Logger.logError("Unique id: (" + finalClient.parser.getSenderSubID() + ") doesn't match id assigned: (" + finalClient.getUniqueID() + ").");
                             finalClient.setValid(false);
                         }
                         else if (finalClient.parser.getMsgType().compareTo("A") == 0)
                         {
-                            System.out.println("Received Identification message");
+                            Logger.logInfo("Received identification message");
 
                             // Client need to provide a name.
                             if (finalClient.getName() == null)
                             {
-                                System.err.println("Client didn't provide a name");
+                                Logger.logError("Client didn't provide a name");
                                 finalClient.setValid(false);
                             }
                             // If client is a market we need to check if the name is unique,
@@ -177,11 +179,10 @@ public class Server {
                             {
                                 if (isMarketNameAlreadyUsed(finalClient.getName()))
                                 {
-                                    System.err.println("Market name is already used !");
+                                    Logger.logError("Market name is already used !");
                                     finalClient.setValid(false);
                                 } else
                                 {
-                                    System.out.println("Market is fine");
                                     this.marketNames.add(finalClient.getName());
                                     finalClient.resetParser();
                                     finalClient.setClientState(Client.COMPLETED);
@@ -192,7 +193,7 @@ public class Server {
                                 Client targetClient = findTargetMarket(targetClientName);
 
                                 if (targetClient == null) {
-                                    System.err.println("Target client: " + targetClientName + " not found");
+                                    Logger.logError("Target client (" + targetClientName + ") not found");
                                     finalClient.clearMarketFound();
                                     finalClient.setClientState(Client.INVALID);
                                     socketChannel.register(selector, SelectionKey.OP_WRITE);
@@ -209,13 +210,13 @@ public class Server {
                                     // to be paired with it, else mark message as invalid.
                                     if (temp.getSocket().read(buf) != -1) {
                                         finalClient.setValid(false);
-                                        System.err.println("Market " + targetClientName + " is already connected to a broker");
+                                        Logger.logError("Market (" + targetClientName + ") is already connected to a broker");
                                         socketChannel.register(selector, SelectionKey.OP_WRITE);
                                         selector.wakeup();
                                         return ;
                                     } else
                                     {
-                                        System.out.println("Market " + targetClientName + " is connected to a closed broker, cleaning old broker...");
+                                        Logger.logWarning("Market (" + targetClientName + ") is connected to a closed broker, cleaning old broker...");
                                         brokerClients.remove(temp.getRemoteAddress().getPort());
                                         routingTable.remove(targetClient);
                                         routingTable.remove(temp);
@@ -223,7 +224,7 @@ public class Server {
                                 }
 
                                 // Let's pair the two clients in the routing table, so we can know where to forward the response from market.
-                                System.out.println("Paired client: " + finalClient.getName() + " with target " + targetClient.getName());
+                                Logger.logSuccess("Paired client (" + finalClient.getName() + ") with target (" + targetClient.getName() + ").");
                                 routingTable.put(finalClient, targetClient);
                                 routingTable.put(targetClient, finalClient);
                                 finalClient.resetParser();
@@ -272,16 +273,15 @@ public class Server {
                     // Client is broken which means it's not paired to any other client,
                     // start a task to send a reject message.
                     try {
-                        System.err.println("Client is not valid");
                         String message = EngineFIX.getFixSessionRejectMessage();
                         byte[] bytes = message.getBytes();
                         socketChannel.write(ByteBuffer.wrap(bytes));
-                        System.out.println("Cleaning client");
+                        Logger.logError("Sent a rejection message to client");
                         finalClient.resetClient();
                         socketChannel.register(selector, SelectionKey.OP_READ);
                         selector.wakeup();
                     } catch (IOException ex) {
-                        System.err.println("Send reject message task failed: " + ex.getMessage());
+                        Logger.logError("Send reject message task failed: " + ex.getMessage());
                     }
                     return ;
                 }
@@ -289,9 +289,9 @@ public class Server {
                 if (!finalClient.isIdSent()) {
                     // Start a task to send a unique id to the client, if we didn't send it before.
                     try {
-                        System.out.println("Sending unique id: " + finalClient.getUniqueID() + " to client");
                         String message = EngineFIX.constructIdentificationMessage(finalClient.getUniqueID(), "does not matter here", finalClient.getName());
                         socketChannel.write(ByteBuffer.wrap(message.getBytes()));
+                        Logger.logSuccess("Sent unique id (" + finalClient.getUniqueID() + ") to client");
                         finalClient.setIdSent();
                         finalClient.setClientState(Client.ESTABLISHED);
                         if (finalClient.getClientType().equals("market")) {
@@ -301,7 +301,7 @@ public class Server {
                         }
                         selector.wakeup();
                     } catch (IOException ex) {
-                        System.err.println("Send unique id message task failed: " + ex.getMessage());
+                        Logger.logError("Send unique id message task failed: " + ex.getMessage());
                     }
                     return ;
                 }
@@ -319,11 +319,11 @@ public class Server {
                         targetClient.setClientState(Client.ESTABLISHED);
 
                         socketChannel.write(ByteBuffer.wrap(bytes));
-                        System.out.println("Writing data to " + finalClient.getName() + " from " + targetName);
+                        Logger.logSuccess("Wrote data to (" + finalClient.getName() + ") from (" + targetName + ").");
                         socketChannel.register(selector, SelectionKey.OP_READ);
                         selector.wakeup();
                     } catch (IOException ex) {
-                        System.err.println("Data forward task failed: " + ex.getMessage());
+                        Logger.logError("Data forward task failed: " + ex.getMessage());
                     }
                 }
             }

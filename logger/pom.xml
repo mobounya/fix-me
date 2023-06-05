@@ -9,7 +9,8 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>router</artifactId>
+    <artifactId>logger</artifactId>
+    <version>1.0</version>
 
     <build>
         <plugins>
@@ -25,18 +26,4 @@
         </plugins>
     </build>
 
-    <dependencies>
-        <dependency>
-            <groupId>fix-me</groupId>
-            <artifactId>EngineFIX</artifactId>
-            <version>1.1</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>fix-me</groupId>
-            <artifactId>logger</artifactId>
-            <version>1.0</version>
-            <scope>compile</scope>
-        </dependency>
-    </dependencies>
 </project>
