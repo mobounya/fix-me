@@ -20,6 +20,8 @@ public abstract class Client implements Comparable<Client> {
     private boolean                 valid;
     private boolean                 idSent;
 
+    private boolean                 socketValid;
+
     private int state;
 
     public static final int NEW = 0; // when Client first created / when calling resetClient.
@@ -39,6 +41,7 @@ public abstract class Client implements Comparable<Client> {
         this.valid = true;
         this.idSent = false;
         this.clientType = null;
+        this.socketValid = false;
     }
 
     public Client(String uniqueID, InetSocketAddress address, SocketChannel socket, String clientType)
@@ -53,6 +56,7 @@ public abstract class Client implements Comparable<Client> {
         this.targetFound = true;
         this.idSent = false;
         this.clientType = clientType;
+        this.socketValid = true;
     }
 
     public static String generateRandomString(int len)
@@ -103,8 +107,7 @@ public abstract class Client implements Comparable<Client> {
         return this.targetFound;
     }
 
-    public void setValid(boolean val)
-    {
+    public void setValid(boolean val) {
         if (val)
             this.state = Client.COMPLETED;
         else
@@ -146,6 +149,14 @@ public abstract class Client implements Comparable<Client> {
         this.state = newState;
     }
 
+    public boolean isSocketValid() {
+        return socketValid;
+    }
+
+    public void setSocketValid(boolean socketValid) {
+        this.socketValid = socketValid;
+    }
+
     public void read(byte[] data, int size)
     {
         if (size <= 0)
@@ -185,6 +196,7 @@ public abstract class Client implements Comparable<Client> {
         this.valid = true;
         this.targetFound = true;
         this.idSent = false;
+        this.socketValid = true;
     }
 
     public void resetParser()

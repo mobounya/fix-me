@@ -136,9 +136,14 @@ public class Broker {
                 parser.consume(EngineFIX.toObjectArray(res));
                 if (parser.isComplete())
                 {
-                    if (parser.isBusinessReject())
+                    if (parser.isSessionReject())
+                    {
+                        System.err.println("Maket is invalid");
+                        System.exit(1);
+                    }
+                    else if (parser.isBusinessReject())
                         System.out.println("Transaction rejected");
-                    if (parser.isSuccess())
+                    else if (parser.isSuccess())
                         System.out.println("Transaction success");
                     this.parser = new EngineFIX();
                     break ;
