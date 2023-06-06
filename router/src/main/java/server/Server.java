@@ -13,24 +13,24 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Predicate;
 
 public class Server {
     private static final int marketPort = 5001;
     private static final int brokerPort = 5000;
 
-    private ArrayList<String>       marketNames;
+    private ArrayList<String> marketNames;
 
-    private final HashMap<Integer, MarketClient>          marketClients;
-    private final HashMap<Integer, BrokerClient>          brokerClients;
+    private final HashMap<Integer, Client> marketClients;
+    private final HashMap<Integer, Client> brokerClients;
 
-    private final HashMap<Client, Client>                 routingTable;
+    private final HashMap<Client, Client> routingTable;
 
     private final ExecutorService service;
 
     private final Object monitor = new Object();
 
-    public Server()
-    {
+    public Server() {
         this.service = Executors.newFixedThreadPool(35);
         this.marketNames = new ArrayList<>();
         this.marketClients = new HashMap<>();
@@ -79,10 +79,9 @@ public class Server {
 
     private void pairClient(SocketChannel socketChannel, Client client, Selector selector) throws IOException {
         String targetClientName = client.getTargetMarket();
-        Client targetClient = findTargetMarket(targetClientName);
+        ArrayList<Client> clientsFound = findTargetMarket(targetClientName);
 
-        if (targetClient == null)
-        {
+        if (clientsFound == null) {
             Logger.logError("Target client (" + targetClientName + ") not found");
             client.clearMarketFound();
             client.setClientState(Client.INVALID);
@@ -91,11 +90,11 @@ public class Server {
             return;
         }
 
+        Client targetClient = clientsFound.get(0);
         Client temp = routingTable.get(targetClient);
 
         // Client you're trying to connect to is already paired.
-        if (temp != null)
-        {
+        if (temp != null) {
             // if the target Market is already paired with another broker
             // check if the broker is still open, if not allow this broker
             // to be paired with it, else mark message as invalid.
@@ -120,6 +119,18 @@ public class Server {
         client.setClientState(Client.COMPLETED);
     }
 
+    private void purgeMarket(Client market)
+    {
+        try {
+            SocketChannel socketChannel = market.getSocket();
+            InetSocketAddress remoteAddress = (InetSocketAddress) socketChannel.getRemoteAddress();
+            this.marketClients.remove(remoteAddress.getPort());
+            this.routingTable.remove(market);
+        } catch (IOException ex) {
+            Logger.logError("Failed to purge market (" + market.getName() + ") :" + ex.getMessage());
+        }
+    }
+
     private void registerMarket(Client client) throws DuplicateMarketNameException
     {
         String marketName = client.getName();
@@ -128,19 +139,48 @@ public class Server {
             this.marketNames.add(client.getName());
             client.resetParser();
             client.setClientState(Client.COMPLETED);
-        } else
-            throw new DuplicateMarketNameException(marketName);
+        } else {
+            ArrayList<Client> marketsFound = findTargetMarket(marketName);
+
+            marketsFound.removeIf((clientArg) -> {
+                boolean val = clientArg.getUniqueID().equals(client.getUniqueID());
+                if (val)
+                    System.out.println("Removing client with id (" + clientArg.getUniqueID() + ") and name (" + clientArg.getName() + ").");
+                return val;
+            });
+
+            Client market = marketsFound.get(0);
+
+            SocketChannel socketChannel = market.getSocket();
+
+            if (isSocketValid(socketChannel))
+                throw new DuplicateMarketNameException(marketName);
+            else {
+                purgeMarket(market);
+                Logger.logWarning("Purged market (" + market.getName() + ") with Id (" + market.getUniqueID() + ").");
+                client.resetParser();
+                client.setClientState(Client.COMPLETED);
+            }
+        }
     }
 
-    private MarketClient findTargetMarket(String marketName)
+    private ArrayList<Client> findTargetMarket(String marketName)
     {
         if (marketName == null)
             return null;
-        for (MarketClient client : this.marketClients.values()) {
-            if (client.getName().compareTo(marketName) == 0)
-                return client;
+        ArrayList<Client> clients = new ArrayList<>();
+
+        synchronized (marketClients)
+        {
+            for (Client client : this.marketClients.values()) {
+                String name = client.getName();
+                if (name != null && name.compareTo(marketName) == 0)
+                {
+                    clients.add(client);
+                }
+            }
         }
-        return null;
+        return (clients.size() > 0) ? clients : null;
     }
 
     private boolean isSocketValid(SocketChannel socket)
