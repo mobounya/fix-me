@@ -96,7 +96,7 @@ public class Server {
                     int price = parser.getPrice();
                     String side = parser.getSide();
 
-                    if (quantity == 0 || instrumentName == null || side == null)
+                    if (quantity <= 0 || price < 0 || instrumentName == null || side == null)
                     {
                         sendRejectMessage();
                         Logger.logError("Invalid buy/sell request");
