@@ -192,7 +192,6 @@ public abstract class Client implements Comparable<Client> {
     {
         this.state = Client.NEW;
         this.parser = new EngineFIX();;
-        this.name = null;
         this.valid = true;
         this.targetFound = true;
         this.idSent = false;

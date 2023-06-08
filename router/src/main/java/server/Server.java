@@ -121,13 +121,31 @@ public class Server {
 
     private void purgeMarket(Client market)
     {
+        String marketName = market.getName();
+        String uniqueId = market.getUniqueID();
         try {
             SocketChannel socketChannel = market.getSocket();
             InetSocketAddress remoteAddress = (InetSocketAddress) socketChannel.getRemoteAddress();
             this.marketClients.remove(remoteAddress.getPort());
             this.routingTable.remove(market);
+            Logger.logWarning("Purged market (" + marketName + ") with id (" + uniqueId + ").");
         } catch (IOException ex) {
-            Logger.logError("Failed to purge market (" + market.getName() + ") :" + ex.getMessage());
+            Logger.logError("Failed to purge market (" + marketName + ") :" + ex.getMessage());
+        }
+    }
+
+    private void purgeBroker(Client broker)
+    {
+        String brokerName = broker.getName();
+        String uniqueId = broker.getUniqueID();
+        try {
+            SocketChannel socketChannel = broker.getSocket();
+            InetSocketAddress remoteAddress = (InetSocketAddress) socketChannel.getRemoteAddress();
+            this.brokerClients.remove(remoteAddress.getPort());
+            this.routingTable.remove(broker);
+            Logger.logWarning("Purged broker (" + brokerName + ") with Id (" + uniqueId + ").");
+        } catch (IOException ex) {
+            Logger.logError("Failed to purge broker (" + brokerName + ") :" + ex.getMessage());
         }
     }
 
@@ -142,12 +160,7 @@ public class Server {
         } else {
             ArrayList<Client> marketsFound = findTargetMarket(marketName);
 
-            marketsFound.removeIf((clientArg) -> {
-                boolean val = clientArg.getUniqueID().equals(client.getUniqueID());
-                if (val)
-                    System.out.println("Removing client with id (" + clientArg.getUniqueID() + ") and name (" + clientArg.getName() + ").");
-                return val;
-            });
+            marketsFound.removeIf((clientArg) -> clientArg.getUniqueID().equals(client.getUniqueID()));
 
             Client market = marketsFound.get(0);
 
@@ -280,8 +293,19 @@ public class Server {
 
         try {
             bytesRead = socketChannel.read(buffer);
-            if (bytesRead <= 0)
-                return ;
+            synchronized (monitor)
+            {
+                if (bytesRead < 0) {
+                    if (client.getClientType().equals("market"))
+                        purgeMarket(client);
+                    else if (client.getClientType().equals("broker"))
+                        purgeBroker(client);
+                    key.cancel();
+                    return ;
+                }
+                if (bytesRead == 0)
+                    return ;
+            }
         } catch (IOException exception) {
             Logger.logError("Read: " + exception.getMessage());
             synchronized (monitor)
