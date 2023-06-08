@@ -11,6 +11,10 @@
 
     <artifactId>broker</artifactId>
 
+    <properties>
+        <main.basedir>${project.basedir}</main.basedir>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -22,6 +26,29 @@
                     <target>17</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>Main</mainClass>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>${project.basedir}/target/dependency</classpathPrefix>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -30,6 +57,7 @@
             <groupId>fix-me</groupId>
             <artifactId>EngineFIX</artifactId>
             <version>1.1</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>
