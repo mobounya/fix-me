@@ -2,6 +2,7 @@ package client;
 
 
 import engineFIX.EngineFIX;
+import logger.Logger;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -175,7 +176,7 @@ public abstract class Client implements Comparable<Client> {
                 this.state = Client.COMPLETED;
         } catch (Exception e)
         {
-            System.out.println("Exception: " + e.getMessage());
+            Logger.logError("EngineFix failed: " + e.getMessage());
         }
     }
 

@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Predicate;
 
 public class Server {
     private static final int marketPort = 5001;
@@ -98,11 +97,12 @@ public class Server {
             // if the target Market is already paired with another broker
             // check if the broker is still open, if not allow this broker
             // to be paired with it, else mark message as invalid.
-            if (!isSocketValid(temp.getSocket())) {
+            if (isSocketValid(temp)) {
                 client.setValid(false);
                 Logger.logError("Market (" + targetClientName + ") is already connected to a broker");
                 socketChannel.register(selector, SelectionKey.OP_WRITE);
                 selector.wakeup();
+                return ;
             } else {
                 Logger.logWarning("Market (" + targetClientName + ") is connected to a closed broker, cleaning old broker...");
                 brokerClients.remove(temp.getRemoteAddress().getPort());
@@ -164,9 +164,7 @@ public class Server {
 
             Client market = marketsFound.get(0);
 
-            SocketChannel socketChannel = market.getSocket();
-
-            if (isSocketValid(socketChannel))
+            if (isSocketValid(market))
                 throw new DuplicateMarketNameException(marketName);
             else {
                 purgeMarket(market);
@@ -196,11 +194,17 @@ public class Server {
         return (clients.size() > 0) ? clients : null;
     }
 
-    private boolean isSocketValid(SocketChannel socket)
+    private boolean isSocketValid(Client client)
     {
+        SocketChannel socket = client.getSocket();
         ByteBuffer buf = ByteBuffer.allocate(1);
         try {
-            return socket.read(buf) != -1;
+            if (socket.read(buf) < 0)
+            {
+                Logger.logWarning("Client (" + client.getName() + ") with Id (" + client.getUniqueID() + ") have an invalid socket.");
+                return false;
+            }
+            return true;
         } catch (IOException e) {
             return false;
         }
@@ -291,6 +295,7 @@ public class Server {
             }
         }
 
+
         try {
             bytesRead = socketChannel.read(buffer);
             synchronized (monitor)
@@ -331,11 +336,15 @@ public class Server {
 
                         finalClient.read(buffer.array(), finalBytesRead);
 
+                        Logger.logInfo("Client (" + finalClient.getName() + ") is done reading.");
+
                         // Client is invalid due to some error in the request.
                         if (!finalClient.parser.isValid())
                         {
                             Logger.logError("Client message is broken");
-                            System.exit(1);
+                            finalClient.setValid(false);
+                            socketChannel.register(selector, SelectionKey.OP_WRITE);
+                            selector.wakeup();
                         }
                         // Client message is complete without errors.
                         else if (finalClient.messageComplete())
